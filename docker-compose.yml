@@ -1,0 +1,185 @@
+version: '3'
+
+services:
+  # DreamOS Core - Core system management
+  dreamos-core:
+    image: ubuntu:22.04
+    container_name: dreamos-core
+    network_mode: "host"
+    volumes:
+      - ./:/app
+      - ./logs:/logs
+    working_dir: /app
+    environment:
+      - HTTP_PROXY=http://127.0.0.1:3128
+      - HTTPS_PROXY=http://127.0.0.1:3128
+      - http_proxy=http://127.0.0.1:3128
+      - https_proxy=http://127.0.0.1:3128
+      - NO_PROXY=localhost,127.0.0.1
+      - no_proxy=localhost,127.0.0.1
+    command: >
+      bash -c "
+        echo 'Starting DreamOS Core simulation...' &&
+        while true; do
+          echo '[DreamOS] Core system running - $(date)' | tee -a /logs/dreamos-core.log;
+          sleep 30;
+        done
+      "
+
+  # DM Manager - System orchestration
+  dm-manager:
+    image: python:3.9
+    container_name: dm-manager
+    network_mode: "host"
+    volumes:
+      - ./:/app
+      - ./logs:/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HTTP_PROXY=http://127.0.0.1:3128
+      - HTTPS_PROXY=http://127.0.0.1:3128
+      - http_proxy=http://127.0.0.1:3128
+      - https_proxy=http://127.0.0.1:3128
+      - NO_PROXY=localhost,127.0.0.1
+      - no_proxy=localhost,127.0.0.1
+    command: >
+      bash -c "
+        echo 'Starting DM Manager simulation...' &&
+        pip install flask requests &&
+        python scripts/dm_manager.py
+      "
+    depends_on:
+      - dreamos-core
+
+  # Vehicle API - Core vehicle signal provider
+  vehicle-api:
+    image: python:3.9
+    container_name: vehicle-api
+    network_mode: "host"
+    volumes:
+      - ./:/app
+      - ./logs:/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HTTP_PROXY=http://127.0.0.1:3128
+      - HTTPS_PROXY=http://127.0.0.1:3128
+      - http_proxy=http://127.0.0.1:3128
+      - https_proxy=http://127.0.0.1:3128
+      - NO_PROXY=localhost,127.0.0.1
+      - no_proxy=localhost,127.0.0.1
+    command: >
+      bash -c "
+        echo 'Starting Vehicle API simulation...' &&
+        pip install flask requests &&
+        python scripts/vehicle_api.py
+      "
+    depends_on:
+      - dm-manager
+
+  # HVAC Service - Climate control provider
+  hvac-service:
+    image: python:3.9
+    container_name: hvac-service
+    network_mode: "host"
+    volumes:
+      - ./:/app
+      - ./logs:/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HTTP_PROXY=http://127.0.0.1:3128
+      - HTTPS_PROXY=http://127.0.0.1:3128
+      - http_proxy=http://127.0.0.1:3128
+      - https_proxy=http://127.0.0.1:3128
+      - NO_PROXY=localhost,127.0.0.1
+      - no_proxy=localhost,127.0.0.1
+    command: >
+      bash -c "
+        echo 'Starting HVAC Service simulation...' &&
+        pip install flask requests &&
+        python scripts/hvac_service.py
+      "
+    depends_on:
+      - vehicle-api
+
+  # IVI System - User interface
+  ivi-system:
+    image: python:3.9
+    container_name: ivi-system
+    network_mode: "host"
+    volumes:
+      - ./:/app
+      - ./logs:/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HTTP_PROXY=http://127.0.0.1:3128
+      - HTTPS_PROXY=http://127.0.0.1:3128
+      - http_proxy=http://127.0.0.1:3128
+      - https_proxy=http://127.0.0.1:3128
+      - NO_PROXY=localhost,127.0.0.1
+      - no_proxy=localhost,127.0.0.1
+    command: >
+      bash -c "
+        echo 'Starting IVI System simulation...' &&
+        pip install flask requests &&
+        python scripts/ivi_system.py
+      "
+    depends_on:
+      - dm-manager
+      - vehicle-api
+      - hvac-service
+
+  # CAN Bus Simulator
+  can-simulator:
+    image: ubuntu:22.04
+    container_name: can-simulator
+    network_mode: "host"
+    volumes:
+      - ./:/app
+      - ./logs:/logs
+    working_dir: /app
+    environment:
+      - HTTP_PROXY=http://127.0.0.1:3128
+      - HTTPS_PROXY=http://127.0.0.1:3128
+      - http_proxy=http://127.0.0.1:3128
+      - https_proxy=http://127.0.0.1:3128
+      - NO_PROXY=localhost,127.0.0.1
+      - no_proxy=localhost,127.0.0.1
+    command: >
+      bash -c "
+        echo 'Starting CAN Bus simulation...' > /logs/can-simulator.log &&
+        while true; do
+          timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+          echo \"[$timestamp] [CAN Simulator] Broadcasting messages on virtual CAN bus\" | tee -a /logs/can-simulator.log &&
+          sleep 10;
+        done
+      "
+
+  # External ECU Simulator
+  ecu-simulator:
+    image: python:3.9
+    container_name: ecu-simulator
+    network_mode: "host"
+    volumes:
+      - ./:/app
+      - ./logs:/logs
+    working_dir: /app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HTTP_PROXY=http://127.0.0.1:3128
+      - HTTPS_PROXY=http://127.0.0.1:3128
+      - http_proxy=http://127.0.0.1:3128
+      - https_proxy=http://127.0.0.1:3128
+      - NO_PROXY=localhost,127.0.0.1
+      - no_proxy=localhost,127.0.0.1
+    command: >
+      bash -c "
+        echo 'Starting ECU simulation...' &&
+        pip install requests &&
+        python scripts/ecu_simulator.py
+      "
+    depends_on:
+      - vehicle-api

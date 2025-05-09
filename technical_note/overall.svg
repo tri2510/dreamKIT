@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background and border -->
+  <rect x="5" y="5" width="1190" height="890" rx="10" fill="#f8f9fa" stroke="#ddd" stroke-width="2"/>
+  
+  <!-- Title -->
+  <text x="600" y="40" font-family="Arial" font-size="28" text-anchor="middle" font-weight="bold">DreamKIT Complete Architecture</text>
+  
+  <!-- Hardware Layer -->
+  <rect x="50" y="700" width="1100" height="150" rx="10" fill="#e6f2ff" stroke="#0066cc" stroke-width="2"/>
+  <text x="600" y="725" font-family="Arial" font-size="20" text-anchor="middle" font-weight="bold">Hardware Layer</text>
+  
+  <!-- NXP S32G -->
+  <rect x="100" y="740" width="200" height="80" rx="5" fill="#cce0ff" stroke="#0066cc" stroke-width="2"/>
+  <text x="200" y="775" font-family="Arial" font-size="16" text-anchor="middle">NXP S32G Goldbox</text>
+  <text x="200" y="795" font-family="Arial" font-size="12" text-anchor="middle">(Central Gateway)</text>
+  
+  <!-- NVIDIA Jetson Orin -->
+  <rect x="350" y="740" width="200" height="80" rx="5" fill="#cce0ff" stroke="#0066cc" stroke-width="2"/>
+  <text x="450" y="775" font-family="Arial" font-size="16" text-anchor="middle">NVIDIA Jetson Orin</text>
+  <text x="450" y="795" font-family="Arial" font-size="12" text-anchor="middle">(Vehicle Computing Unit)</text>
+  
+  <!-- Touchscreen -->
+  <rect x="600" y="740" width="200" height="80" rx="5" fill="#cce0ff" stroke="#0066cc" stroke-width="2"/>
+  <text x="700" y="775" font-family="Arial" font-size="16" text-anchor="middle">IVI Touchscreen</text>
+  <text x="700" y="795" font-family="Arial" font-size="12" text-anchor="middle">(In-Vehicle Infotainment)</text>
+  
+  <!-- External Interfaces -->
+  <rect x="850" y="740" width="250" height="80" rx="5" fill="#cce0ff" stroke="#0066cc" stroke-width="2"/>
+  <text x="975" y="765" font-family="Arial" font-size="16" text-anchor="middle">External Interfaces</text>
+  <text x="975" y="785" font-family="Arial" font-size="12" text-anchor="middle">CAN/CANFD, Ethernet, LIN, SOME/IP</text>
+  <text x="975" y="805" font-family="Arial" font-size="12" text-anchor="middle">External ECU Connections</text>
+  
+  <!-- OS Layer -->
+  <rect x="50" y="540" width="1100" height="140" rx="10" fill="#e6fff2" stroke="#00994c" stroke-width="2"/>
+  <text x="600" y="565" font-family="Arial" font-size="20" text-anchor="middle" font-weight="bold">Operating System Layer</text>
+  
+  <!-- QNX/Yocto -->
+  <rect x="100" y="585" width="200" height="70" rx="5" fill="#ccffe6" stroke="#00994c" stroke-width="2"/>
+  <text x="200" y="620" font-family="Arial" font-size="16" text-anchor="middle">QNX/Yocto</text>
+  <text x="200" y="640" font-family="Arial" font-size="12" text-anchor="middle">(S32G Gateway)</text>
+  
+  <!-- Linux/Ubuntu -->
+  <rect x="350" y="585" width="200" height="70" rx="5" fill="#ccffe6" stroke="#00994c" stroke-width="2"/>
+  <text x="450" y="620" font-family="Arial" font-size="16" text-anchor="middle">Linux/Ubuntu</text>
+  <text x="450" y="640" font-family="Arial" font-size="12" text-anchor="middle">(Jetson Orin)</text>
+  
+  <!-- DreamOS -->
+  <rect x="600" y="585" width="440" height="70" rx="5" fill="#ccffe6" stroke="#00994c" stroke-width="2"/>
+  <text x="820" y="620" font-family="Arial" font-size="16" text-anchor="middle">DreamOS Core</text>
+  <text x="820" y="640" font-family="Arial" font-size="12" text-anchor="middle">(Software Management, Updates, Orchestration)</text>
+  
+  <!-- Middleware/Runtime Layer -->
+  <rect x="50" y="380" width="1100" height="140" rx="10" fill="#fff2e6" stroke="#cc6600" stroke-width="2"/>
+  <text x="600" y="405" font-family="Arial" font-size="20" text-anchor="middle" font-weight="bold">Middleware &amp; Runtime Layer</text>
+  
+  <!-- SDV Runtime -->
+  <rect x="100" y="425" width="250" height="70" rx="5" fill="#ffe6cc" stroke="#cc6600" stroke-width="2"/>
+  <text x="225" y="455" font-family="Arial" font-size="16" text-anchor="middle">Eclipse SDV Runtime</text>
+  <text x="225" y="475" font-family="Arial" font-size="12" text-anchor="middle">(Vehicle API Support)</text>
+  
+  <!-- CUDA/TensorRT -->
+  <rect x="380" y="425" width="250" height="70" rx="5" fill="#ffe6cc" stroke="#cc6600" stroke-width="2"/>
+  <text x="505" y="455" font-family="Arial" font-size="16" text-anchor="middle">NVIDIA Stack</text>
+  <text x="505" y="475" font-family="Arial" font-size="12" text-anchor="middle">(CUDA, TensorRT, DeepStream)</text>
+  
+  <!-- DM Manager -->
+  <rect x="660" y="425" width="250" height="70" rx="5" fill="#ffe6cc" stroke="#cc6600" stroke-width="2"/>
+  <text x="785" y="455" font-family="Arial" font-size="16" text-anchor="middle">DM Manager</text>
+  <text x="785" y="475" font-family="Arial" font-size="12" text-anchor="middle">(System Orchestration)</text>
+  
+  <!-- Socket.IO -->
+  <rect x="940" y="425" width="160" height="70" rx="5" fill="#ffe6cc" stroke="#cc6600" stroke-width="2"/>
+  <text x="1020" y="455" font-family="Arial" font-size="16" text-anchor="middle">Socket.IO</text>
+  <text x="1020" y="475" font-family="Arial" font-size="12" text-anchor="middle">(Wireless Connectivity)</text>
+  
+  <!-- Service Layer -->
+  <rect x="50" y="220" width="1100" height="140" rx="10" fill="#f2e6ff" stroke="#6600cc" stroke-width="2"/>
+  <text x="600" y="245" font-family="Arial" font-size="20" text-anchor="middle" font-weight="bold">Service Layer (Providers)</text>
+  
+  <!-- HVAC Provider -->
+  <rect x="100" y="265" width="200" height="70" rx="5" fill="#e6ccff" stroke="#6600cc" stroke-width="2"/>
+  <text x="200" y="300" font-family="Arial" font-size="16" text-anchor="middle">HVAC Service</text>
+  <text x="200" y="320" font-family="Arial" font-size="12" text-anchor="middle">(CAN-to-API Conversion)</text>
+  
+  <!-- BYOD Provider -->
+  <rect x="350" y="265" width="200" height="70" rx="5" fill="#e6ccff" stroke="#6600cc" stroke-width="2"/>
+  <text x="450" y="300" font-family="Arial" font-size="16" text-anchor="middle">BYOD Coffee Service</text>
+  <text x="450" y="320" font-family="Arial" font-size="12" text-anchor="middle">(API Provider)</text>
+  
+  <!-- VSS API Abstraction -->
+  <rect x="600" y="265" width="500" height="70" rx="5" fill="#e6ccff" stroke="#6600cc" stroke-width="2"/>
+  <text x="850" y="290" font-family="Arial" font-size="16" text-anchor="middle">Vehicle Signal Specification (VSS) API</text>
+  <text x="850" y="310" font-family="Arial" font-size="12" text-anchor="middle">(Standardized Hardware Abstraction Layer)</text>
+  <text x="850" y="330" font-family="Arial" font-size="12" text-anchor="middle">(Eclipse Community Standard)</text>
+  
+  <!-- Application Layer -->
+  <rect x="50" y="60" width="1100" height="140" rx="10" fill="#ffe6e6" stroke="#cc0000" stroke-width="2"/>
+  <text x="600" y="85" font-family="Arial" font-size="20" text-anchor="middle" font-weight="bold">Application Layer (Consumers)</text>
+  
+  <!-- QM Apps -->
+  <rect x="100" y="105" width="335" height="70" rx="5" fill="#ffcccc" stroke="#cc0000" stroke-width="2"/>
+  <text x="267.5" y="140" font-family="Arial" font-size="16" text-anchor="middle">QM Applications</text>
+  <text x="267.5" y="160" font-family="Arial" font-size="12" text-anchor="middle">(HVAC App, BYOD Coffee Machine App)</text>
+  
+  <!-- IVI Interface -->
+  <rect x="465" y="105" width="335" height="70" rx="5" fill="#ffcccc" stroke="#cc0000" stroke-width="2"/>
+  <text x="632.5" y="140" font-family="Arial" font-size="16" text-anchor="middle">dk-ivi-lite</text>
+  <text x="632.5" y="160" font-family="Arial" font-size="12" text-anchor="middle">(Qt6 C++ IVI Interface)</text>
+  
+  <!-- External Dev Tools -->
+  <rect x="830" y="105" width="270" height="70" rx="5" fill="#ffcccc" stroke="#cc0000" stroke-width="2"/>
+  <text x="965" y="130" font-family="Arial" font-size="16" text-anchor="middle">External Development</text>
+  <text x="965" y="150" font-family="Arial" font-size="12" text-anchor="middle">(playground.digital.auto)</text>
+  <text x="965" y="170" font-family="Arial" font-size="12" text-anchor="middle">(Eclipse Velocitas)</text>
+
+  <!-- Connection lines -->
+  <!-- Vertical connections between layers -->
+  <!-- App to Service -->
+  <line x1="200" y1="175" x2="200" y2="265" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="450" y1="175" x2="450" y2="265" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="633" y1="175" x2="850" y2="265" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="965" y1="175" x2="850" y2="265" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  
+  <!-- Service to Middleware -->
+  <line x1="200" y1="335" x2="225" y2="425" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="450" y1="335" x2="505" y2="425" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="850" y1="335" x2="785" y2="425" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="850" y1="335" x2="1020" y2="425" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  
+  <!-- Middleware to OS -->
+  <line x1="225" y1="495" x2="200" y2="585" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="505" y1="495" x2="450" y2="585" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="785" y1="495" x2="820" y2="585" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="1020" y1="495" x2="820" y2="585" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  
+  <!-- OS to Hardware -->
+  <line x1="200" y1="655" x2="200" y2="740" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="450" y1="655" x2="450" y2="740" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="820" y1="655" x2="700" y2="740" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+  <line x1="820" y1="655" x2="975" y2="740" stroke="#999" stroke-width="2" stroke-dasharray="5,5"/>
+
+  <!-- External connections -->
+  <!-- Cloud Integration arrow -->
+  <path d="M1100,220 L1150,220 L1150,100 L1100,100" fill="none" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+  <polygon points="1110,100 1100,100 1105,110" fill="#333"/>
+  <text x="1165" y="160" font-family="Arial" font-size="12" text-anchor="middle" transform="rotate(90,1165,160)">Cloud Integration</text>
+  
+  <!-- External ECU arrow -->
+  <path d="M1100,700 L1150,700 L1150,780 L1100,780" fill="none" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+  <polygon points="1110,780 1100,780 1105,770" fill="#333"/>
+  <text x="1165" y="740" font-family="Arial" font-size="12" text-anchor="middle" transform="rotate(90,1165,740)">External ECUs</text>
+</svg>
