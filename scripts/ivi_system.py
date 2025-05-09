@@ -227,11 +227,10 @@ def index():
 def vehicle_status():
     logger.info("Vehicle status API called")
     try:
-        response = requests.get("http://127.0.0.1:9000/api/v1/vehicle/info", timeout=1)
-        response.raise_for_status()
+        response = requests.get("http://vehicle-api:9000/api/v1/vehicle/info", timeout=1)
         return jsonify(response.json())
     except Exception as e:
-        logger.error(f"Error fetching vehicle status: {e}, response text: {response.text if 'response' in locals() else 'No response'}")
+        logger.error(f"Error fetching vehicle status: {e}")
         return jsonify({
             "VehicleSpeed": 0,
             "EngineRPM": 0,
@@ -244,11 +243,10 @@ def vehicle_status():
 def hvac_status():
     logger.info("HVAC status API called")
     try:
-        response = requests.get("http://127.0.0.1:8080/api/v1/hvac", timeout=1)
-        response.raise_for_status()
+        response = requests.get("http://hvac-service:8080/api/v1/hvac", timeout=1)
         return jsonify(response.json())
     except Exception as e:
-        logger.error(f"Error fetching HVAC status: {e}, response text: {response.text if 'response' in locals() else 'No response'}")
+        logger.error(f"Error fetching HVAC status: {e}")
         return jsonify({
             "temperature": 0,
             "targetTemperature": 0,
@@ -265,25 +263,25 @@ def system_status():
     status = {"dmManager": "Unknown", "vehicleApi": "Unknown", "hvacService": "Unknown"}
     
     try:
-        response = requests.get("http://127.0.0.1:5000/api/v1/status", timeout=1)
+        response = requests.get("http://dm-manager:5000/api/v1/status", timeout=1)
         if response.status_code == 200:
             status["dmManager"] = "Connected"
-    except Exception as e:
-        logger.error(f"Error checking DM Manager status: {e}")
+    except:
+        pass
         
     try:
-        response = requests.get("http://127.0.0.1:9000/api/v1/vehicle/info", timeout=1)
+        response = requests.get("http://vehicle-api:9000/api/v1/vehicle/info", timeout=1)
         if response.status_code == 200:
             status["vehicleApi"] = "Connected"
-    except Exception as e:
-        logger.error(f"Error checking Vehicle API status: {e}")
+    except:
+        pass
         
     try:
-        response = requests.get("http://127.0.0.1:8080/api/v1/status", timeout=1)
+        response = requests.get("http://hvac-service:8080/api/v1/status", timeout=1)
         if response.status_code == 200:
             status["hvacService"] = "Connected"
-    except Exception as e:
-        logger.error(f"Error checking HVAC Service status: {e}")
+    except:
+        pass
         
     return jsonify(status)
 
@@ -292,11 +290,10 @@ def set_hvac():
     logger.info("Set HVAC API called")
     try:
         data = request.json
-        response = requests.post("http://127.0.0.1:8080/api/v1/hvac", json=data, timeout=1)
-        response.raise_for_status()
+        response = requests.post("http://hvac-service:8080/api/v1/hvac", json=data, timeout=1)
         return jsonify(response.json())
     except Exception as e:
-        logger.error(f"Error setting HVAC: {e}, response text: {response.text if 'response' in locals() else 'No response'}")
+        logger.error(f"Error setting HVAC: {e}")
         return jsonify({"error": "Failed to set HVAC parameters"})
 
 def log_activity():
