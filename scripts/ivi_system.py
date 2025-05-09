@@ -227,7 +227,7 @@ def index():
 def vehicle_status():
     logger.info("Vehicle status API called")
     try:
-        response = requests.get("http://vehicle-api:9000/api/v1/vehicle/info", timeout=1)
+        response = requests.get("http://localhost:9000/api/v1/vehicle/info", timeout=1)
         return jsonify(response.json())
     except Exception as e:
         logger.error(f"Error fetching vehicle status: {e}")
