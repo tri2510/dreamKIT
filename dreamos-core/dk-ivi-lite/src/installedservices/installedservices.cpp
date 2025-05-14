@@ -245,15 +245,15 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
         // QString cmd;
         cmd = "";
 
-        QString dbc_default_path_mount = " -v /home/" + DK_VCU_USERNAME + "/.dk/dk_manager/vssmapping/dbc_default_values.json:/app/vss/dbc_default_values.json:ro ";
-        QString dbc_vss_mount = " -v /home/" + DK_VCU_USERNAME + "/.dk/dk_vssgeneration/vss.json:/app/vss/vss.json:ro ";
+        QString dbc_default_path_mount = " -v ./dk_manager/vssmapping/dbc_default_values.json:/app/vss/dbc_default_values.json:ro ";
+        QString dbc_vss_mount = " -v ./dk_vssgeneration/vss.json:/app/vss/vss.json:ro ";
         
         QString runtimecfgfile = DK_INSTALLED_SERVICE_FOLDER + appId + "/runtimecfg.json";
         QString safeParams = getSafeDockerParam(runtimecfgfile);
         QString audioParams = getAudioParam(runtimecfgfile);
 
         // start service
-        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v /home/" + DK_VCU_USERNAME + "/.dk/dk_installedservices/" + appId + ":/app/runtime --network host " + dbc_default_path_mount + dbc_vss_mount + safeParams + audioParams + installedServicesList[appIdx].packagelink;
+        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v " + "./dk_installedservices/" + appId + ":/app/runtime --network host " + dbc_default_path_mount + dbc_vss_mount + safeParams + audioParams + installedServicesList[appIdx].packagelink;
         qDebug() << cmd;
         system(cmd.toUtf8());
 

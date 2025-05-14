@@ -252,7 +252,7 @@ Q_INVOKABLE void VappsAsync::executeServices(int appIdx, const QString name, con
         QString uiParams = getUiParam(runtimecfgfile);
 
         // start digital.auto app
-        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v /home/" + DK_VCU_USERNAME + "/.dk/dk_installedapps/" + appId + ":/app/runtime -v /home/" + DK_VCU_USERNAME + "/.dk/dk_vssgeneration/vehicle_gen:/home/vss/vehicle_gen:ro --network dk_network " + safeParams + audioParams + uiParams + installedVappsList[appIdx].packagelink;
+        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v $(pwd)/dk_installedapps/" + appId + ":/app/runtime -v $(pwd)/dk_vssgeneration/vehicle_gen:/home/vss/vehicle_gen:ro --network dk_network " + safeParams + audioParams + uiParams + installedVappsList[appIdx].packagelink;
         qDebug() << cmd;
         system(cmd.toUtf8());
 
