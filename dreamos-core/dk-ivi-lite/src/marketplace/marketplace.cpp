@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QDebug>
+#include <QDir>
 
 extern QString DK_VCU_USERNAME;
 extern QString DK_ARCH;
@@ -46,7 +47,7 @@ void ensureMarketplaceSelectionExists(const QString &marketplaceFilePath) {
 
 AppAsync::AppAsync()
 {
-    QString dkRootFolder = qgetenv("DK_CONTAINER_ROOT");
+    QString dkRootFolder = DK_CONTAINER_ROOT;
     QString marketplaceFolder = dkRootFolder + "dk_marketplace/";
     QString marketPlaceSelection = marketplaceFolder + "marketplaceselection.json";
     // Ensure marketplace selection file exists
@@ -67,45 +68,117 @@ Q_INVOKABLE void AppAsync::initMarketplaceListFromDB()
 
 Q_INVOKABLE void AppAsync::initInstalledAppFromDB()
 {
-    qDebug() << __func__ << "@" << __LINE__;
+    qDebug() << "==== BEGIN" << __func__ << "====";
+    qDebug() << "Current working directory:" << QDir::currentPath();
+    qDebug() << "Clearing installedAppList";
     installedAppList.clear();
 
-    QFile file("./installedapps/installedapps.csv");
+    QString csvPath = "./installedapps/installedapps.csv";
+    qDebug() << "CSV path:" << csvPath;
+    QFile file(csvPath);
+    
+    // Check if file and directory exist
+    QFileInfo fileInfo(csvPath);
+    QDir dir = fileInfo.dir();
+    qDebug() << "Directory path:" << dir.absolutePath();
+    qDebug() << "Directory exists:" << dir.exists();
+    qDebug() << "File exists:" << fileInfo.exists();
+    qDebug() << "File is readable:" << fileInfo.isReadable();
+    
     if (!file.open(QIODevice::ReadOnly)) {
-        qDebug() << file.errorString();
-        qDebug() << __func__ << "@" << __LINE__;
+        qDebug() << "ERROR: Failed to open CSV file:" << file.errorString();
+        
+        // Try to create directory if it doesn't exist
+        if (!dir.exists()) {
+            qDebug() << "Directory doesn't exist, attempting to create it...";
+            bool dirCreated = dir.mkpath(".");
+            qDebug() << "Directory creation result:" << dirCreated;
+            
+            // Try to create an empty CSV file
+            QFile newFile(csvPath);
+            if (newFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QTextStream stream(&newFile);
+                stream << "foldername,displayname,executable,iconpath\n";
+                newFile.close();
+                qDebug() << "Created new CSV file with header";
+            } else {
+                qDebug() << "Failed to create new CSV file:" << newFile.errorString();
+            }
+        }
+        
+        qDebug() << "Exiting" << __func__ << "due to file open error";
         return;
     }
+    
     QList<QStringList> appList;
-    qDebug() << "appList";
+    qDebug() << "Reading CSV data...";
+    
+    int lineCount = 0;
     while (!file.atEnd()) {
         QByteArray lineData = file.readLine();
         QString line = QString(lineData);
         line.replace("\r\n", "");
         line.replace("\n", "");
-        qDebug() << line;
-        appList.append(QString(line).split(','));
+        lineCount++;
+        
+        qDebug() << "Line" << lineCount << ":" << line;
+        QStringList splitLine = QString(line).split(',');
+        qDebug() << "  Split into" << splitLine.size() << "parts";
+        appList.append(splitLine);
     }
-
+    
+    qDebug() << "Total lines read:" << lineCount;
+    qDebug() << "Total items in appList:" << appList.size();
+    
+    if (appList.size() <= 1) {
+        qDebug() << "Warning: CSV contains only header or is empty";
+    }
+    
+    qDebug() << "Initializing installedAppList with size:" << (appList.size() - 1);
     initInstalledAppList(appList.size() - 1);
 
     for(int i = 1; i < appList.size(); i++) {
+        qDebug() << "Processing app index:" << i;
+        
+        // Check if the line has enough elements
+        if (appList[i].size() < 4) {
+            qDebug() << "WARNING: Line" << i << "has insufficient data:" << appList[i].join(",");
+            continue;
+        }
+        
         InstalledAppListStruct appInfo;
         appInfo.foldername  = appList[i][0];
         appInfo.displayname = appList[i][1];
-//        appInfo.executable  = "./installedapps/" + appInfo.foldername + "/" + appList[i][2];
         appInfo.executable  = appList[i][2];
         appInfo.iconPath    = "file:./installedapps/" + appInfo.foldername + "/" + appList[i][3];
 
-       qDebug() << appInfo.executable << " - " << appInfo.iconPath;
+        qDebug() << "App" << i << "details:";
+        qDebug() << "  Folder name:" << appInfo.foldername;
+        qDebug() << "  Display name:" << appInfo.displayname;
+        qDebug() << "  Executable:" << appInfo.executable;
+        qDebug() << "  Icon path:" << appInfo.iconPath;
+        
+        // Check if the app folder exists
+        QDir appDir("./installedapps/" + appInfo.foldername);
+        qDebug() << "  App directory exists:" << appDir.exists();
+        
+        // Check if the icon file exists
+        QFileInfo iconInfo("./installedapps/" + appInfo.foldername + "/" + appList[i][3]);
+        qDebug() << "  Icon file exists:" << iconInfo.exists();
+        
+        qDebug() << "  Appending to UI list...";
         appendAppInfoToInstalledAppList(appInfo.displayname, appInfo.iconPath);
 
+        qDebug() << "  Adding to installedAppList";
         installedAppList.append(appInfo);
     }
 
+    qDebug() << "Appending last row";
     appendLastRowToInstalledAppList();
 
+    qDebug() << "Closing file";
     file.close();
+    qDebug() << "==== END" << __func__ << "====";
 }
 
 Q_INVOKABLE void AppAsync::setCurrentMarketPlaceIdx(int idx)
@@ -326,29 +399,192 @@ Q_INVOKABLE void AppAsync::searchAppFromStore(const QString searchName)
 
 Q_INVOKABLE void AppAsync::installApp(const int index)
 {
+    qDebug() << "==== BEGIN installApp ====";
+    qDebug() << "Current working directory:" << QDir::currentPath();
+    
     if (index >= searchedAppList.size()) {
-        qDebug() << "index out of range";
+        qDebug() << "ERROR: Index" << index << "out of range (searchedAppList size:" << searchedAppList.size() << ")";
         return;
     }
 
     QString appId = searchedAppList[index].id;
-    qDebug() << searchedAppList[index].name << " index = " << index << " is installing";
-    qDebug() << " appId = " << appId;
+    QString appName = searchedAppList[index].name;
+    QString thumbnail = searchedAppList[index].iconPath;
+    
+    qDebug() << "Installing app:" << appName << "at index:" << index;
+    qDebug() << "App ID:" << appId;
+    qDebug() << "Thumbnail:" << thumbnail;
 
+    // Debug environment variables
+    qDebug() << "DK_VCU_USERNAME:" << DK_VCU_USERNAME;
+    qDebug() << "DK_CONTAINER_ROOT:" << DK_CONTAINER_ROOT;
+    qDebug() << "DK_DOCKER_HUB_NAMESPACE:" << DK_DOCKER_HUB_NAMESPACE;
+    qDebug() << "DK_ARCH:" << DK_ARCH;
+    
     QString dockerHubUrl = "";
     if(DK_DOCKER_HUB_NAMESPACE.isEmpty()) {
         DK_DOCKER_HUB_NAMESPACE = qgetenv("DK_DOCKER_HUB_NAMESPACE");
+        qDebug() << "Getting DK_DOCKER_HUB_NAMESPACE from env:" << DK_DOCKER_HUB_NAMESPACE;
     }
     dockerHubUrl = DK_DOCKER_HUB_NAMESPACE + "/";
-     
+    qDebug() << "Docker Hub URL:" << dockerHubUrl;
 
     QString installCfg = "/home/" + DK_VCU_USERNAME + "/.dk/dk_marketplace/" + appId + "_installcfg.json";
-    QString cmd = "docker kill dk_appinstallservice;docker rm dk_appinstallservice;docker run -d -it --name dk_appinstallservice -v /home/" + DK_VCU_USERNAME + "/.dk:/app/.dk -v /var/run/docker.sock:/var/run/docker.sock --log-opt max-size=10m --log-opt max-file=3 -v " + installCfg + ":/app/installCfg.json " + dockerHubUrl + "dk_appinstallservice:latest";
-    qDebug() << " install cmd = " << cmd;
-    system(cmd.toUtf8()); // this is the exemple, download from local.
+    qDebug() << "Install config path:" << installCfg;
+    qDebug() << "Install config exists:" << QFileInfo(installCfg).exists();
 
-    // refresh install app vielw
+    QString cmd = "docker kill dk_appinstallservice;docker rm dk_appinstallservice;docker run -d -it --name dk_appinstallservice -v /home/" + DK_VCU_USERNAME + "/.dk:/app/.dk -v /var/run/docker.sock:/var/run/docker.sock --log-opt max-size=10m --log-opt max-file=3 -v " + installCfg + ":/app/installCfg.json " + "autowrx/dk_appinstallservice:latest";
+    qDebug() << "Docker install command:" << cmd;
+    
+    int cmdResult = system(cmd.toUtf8());
+    qDebug() << "Docker command result code:" << cmdResult;
+
+    // Update the CSV file
+    QString csvPath = "installedapps/installedapps.csv";
+    qDebug() << "CSV path:" << csvPath;
+    QFile csvFile(csvPath);
+    
+    // Create directory if it doesn't exist
+    QDir dir("installedapps");
+    qDebug() << "installedapps directory exists:" << dir.exists();
+    if (!dir.exists()) {
+        qDebug() << "Creating installedapps directory...";
+        bool dirCreated = dir.mkpath(".");
+        qDebug() << "Directory creation result:" << dirCreated;
+        if (!dirCreated) {
+            qDebug() << "Directory creation failed - check permissions";
+        }
+    }
+    
+    // Check if file exists and create header if needed
+    bool fileExists = csvFile.exists();
+    qDebug() << "CSV file exists:" << fileExists;
+    
+    if (!fileExists) {
+        qDebug() << "Creating CSV file with header";
+        bool fileOpened = csvFile.open(QIODevice::WriteOnly | QIODevice::Text);
+        qDebug() << "CSV file opened for header creation:" << fileOpened;
+        if (fileOpened) {
+            QTextStream stream(&csvFile);
+            stream << "foldername,displayname,executable,iconpath\n";
+            csvFile.close();
+            qDebug() << "CSV header written";
+        } else {
+            qDebug() << "CSV file creation error:" << csvFile.errorString();
+        }
+    }
+    
+    // Append the new app to the CSV
+    qDebug() << "Appending to CSV file";
+    bool csvOpened = csvFile.open(QIODevice::Append | QIODevice::Text);
+    qDebug() << "CSV file opened for append:" << csvOpened;
+    if (csvOpened) {
+        QTextStream stream(&csvFile);
+        stream << appId << "," << appName << ",start.sh," << thumbnail << "\n";
+        csvFile.close();
+        qDebug() << "App appended to CSV";
+    } else {
+        qDebug() << "CSV append error:" << csvFile.errorString();
+    }
+
+    // Also update the JSON file for installedvapps
+    // First, ensure DK_CONTAINER_ROOT is set properly
+    if (DK_CONTAINER_ROOT.isEmpty()) {
+        DK_CONTAINER_ROOT = qgetenv("DK_CONTAINER_ROOT");
+        qDebug() << "Getting DK_CONTAINER_ROOT from env:" << DK_CONTAINER_ROOT;
+        if (DK_CONTAINER_ROOT.isEmpty()) {
+            qDebug() << "DK_CONTAINER_ROOT is empty, using default paths";
+            DK_CONTAINER_ROOT = "./";
+        }
+    }
+    
+    QString jsonFolderPath = DK_CONTAINER_ROOT + "dk_installedapps/";
+    QString jsonPath = jsonFolderPath + "installedapps.json";
+    
+    qDebug() << "JSON folder path:" << jsonFolderPath;
+    qDebug() << "JSON file path:" << jsonPath;
+    
+    // Create JSON directory if needed
+    QDir jsonDir(jsonFolderPath);
+    qDebug() << "JSON directory exists:" << jsonDir.exists();
+    if (!jsonDir.exists()) {
+        qDebug() << "Creating JSON directory...";
+        bool jsonDirCreated = jsonDir.mkpath(".");
+        qDebug() << "JSON directory creation result:" << jsonDirCreated;
+        if (!jsonDirCreated) {
+            qDebug() << "JSON directory creation failed - check permissions";
+        }
+    }
+    
+    // Read existing JSON file or create empty array
+    QJsonArray jsonArray;
+    QFile jsonFile(jsonPath);
+    qDebug() << "JSON file exists:" << jsonFile.exists();
+    
+    if (jsonFile.exists() && jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "Reading existing JSON file";
+        QByteArray jsonData = jsonFile.readAll();
+        jsonFile.close();
+        QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+        if (!doc.isNull() && doc.isArray()) {
+            jsonArray = doc.array();
+            qDebug() << "JSON array read, size:" << jsonArray.size();
+        } else {
+            qDebug() << "JSON file is not a valid array";
+        }
+    } else if (jsonFile.exists()) {
+        qDebug() << "JSON file exists but couldn't be opened, error:" << jsonFile.errorString();
+    } else {
+        qDebug() << "JSON file doesn't exist, will create new";
+    }
+    
+    // Check if app already exists in JSON
+    bool appExists = false;
+    for (int i = 0; i < jsonArray.size(); i++) {
+        QJsonObject obj = jsonArray[i].toObject();
+        if (obj["_id"].toString() == appId) {
+            appExists = true;
+            qDebug() << "App already exists in JSON at index" << i;
+            break;
+        }
+    }
+    
+    // Add the app if it doesn't already exist
+    if (!appExists) {
+        qDebug() << "Adding app to JSON";
+        
+        // Create a minimal JSON object for the app
+        QJsonObject appObj;
+        appObj["_id"] = appId;
+        appObj["name"] = appName;
+        appObj["category"] = "vehicle"; // Default category
+        appObj["thumbnail"] = thumbnail;
+        appObj["downloads"] = 0;
+        
+        // Create a createdBy object
+        QJsonObject createdBy;
+        createdBy["fullName"] = "Unknown";
+        appObj["createdBy"] = createdBy;
+        
+        jsonArray.append(appObj);
+        
+        // Save updated JSON array
+        qDebug() << "Saving JSON file";
+        bool jsonOpened = jsonFile.open(QIODevice::WriteOnly | QIODevice::Text);
+        qDebug() << "JSON file opened for writing:" << jsonOpened;
+        if (jsonOpened) {
+            QJsonDocument doc(jsonArray);
+            jsonFile.write(doc.toJson());
+            jsonFile.close();
+            qDebug() << "JSON file updated with new app, total apps:" << jsonArray.size();
+        } else {
+            qDebug() << "JSON file write error:" << jsonFile.errorString();
+        }
+    }
+
+    qDebug() << "Refreshing installed app view";
     initInstalledAppFromDB();
+    qDebug() << "==== END installApp ====";
 }
 
 

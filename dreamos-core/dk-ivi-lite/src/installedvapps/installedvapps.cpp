@@ -15,7 +15,7 @@ extern QString DK_ARCH;
 extern QString DK_DOCKER_HUB_NAMESPACE;
 extern QString DK_CONTAINER_ROOT;
 
-QString DK_INSTALLED_APPS_FOLDER = "";
+QString DK_INSTALLED_APPS_FOLDER = "/home/htr1hc/.dk/dk_installedservices/";
 
 InstalledVappsCheckThread::InstalledVappsCheckThread(VappsAsync *parent)
 {

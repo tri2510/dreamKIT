@@ -17,10 +17,10 @@
 //#include <notification/notification.hpp>
 //extern NotificationAsync *carNotifAsync;
 
-QString DK_VCU_USERNAME = "sdv";
-QString DK_ARCH = "arm64";
+QString DK_VCU_USERNAME = "htr1hc";
+QString DK_ARCH = "adm64";
 QString DK_DOCKER_HUB_NAMESPACE = "";
-QString DK_CONTAINER_ROOT       = "";
+QString DK_CONTAINER_ROOT       = "/home/htr1hc/.dk/";
 
 QString DK_MGR_DIR              = DK_CONTAINER_ROOT + "dk_manager/";
 QString digitalautoDeployFolder = DK_MGR_DIR + "prototypes/";
@@ -107,7 +107,6 @@ DigitalAutoAppAsync::DigitalAutoAppAsync()
     }
 
     // get DK_VCU_USERNAME env var
-    DK_VCU_USERNAME = qgetenv("DK_USER");
     DK_ARCH = qgetenv("DK_ARCH");
     DK_DOCKER_HUB_NAMESPACE = qgetenv("DK_DOCKER_HUB_NAMESPACE");
 
