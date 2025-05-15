@@ -5,6 +5,10 @@ project(untitled2 VERSION 0.1 LANGUAGES CXX)
 # Find Python3
 find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
 
+set(ENV{DK_USER} "htr1hc")
+set(ENV{DK_ARCH} "amd64")
+set(ENV{DK_DOCKER_HUB_NAMESPACE} "")
+
 # Include directories
 include_directories(${Python3_INCLUDE_DIRS})
 
