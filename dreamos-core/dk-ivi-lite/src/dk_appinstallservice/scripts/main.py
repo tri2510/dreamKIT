@@ -289,22 +289,45 @@ def main():
             if result == False:
                 print(f"Error: can't execute {cmd}")
 
-
     print('-' * 50)
-    # Check if 'RuntimeCfg' exists
+    # Create a new runtime config with Docker image URL and nested RuntimeCfg
+    new_runtime_cfg = {}
+
+    # Add the Docker image URL to the runtime config
+    if 'DockerImageURL' in dashboard_config:
+        new_runtime_cfg['DockerImageURL'] = dashboard_config['DockerImageURL']
+    else:
+        print("Warning: DockerImageURL not found in dashboard_config")
+        new_runtime_cfg['DockerImageURL'] = DockerImageURL  # Use the previously extracted value
+
+    # Create a nested RuntimeCfg object
+    runtime_cfg_obj = {}
+
+    # Check if 'RuntimeCfg' exists in dashboard_config
     if 'RuntimeCfg' in dashboard_config:
-        # Extract RuntimeCfg
+        # Extract RuntimeCfg parameters
         runtime_cfg = dashboard_config.get("RuntimeCfg", {})
-        with open(runtimeCfgJson, 'w') as f:
-            json.dump(runtime_cfg, f, indent=4)
+        # Copy all parameters to our runtime_cfg_obj
+        for key, value in runtime_cfg.items():
+            runtime_cfg_obj[key] = value
         print(f"RuntimeCfg exists: {runtime_cfg}")
     else:
-        # If RuntimeCfg doesn't exist, create a file with "{}" content
-        print("RuntimeCfg does not exist. Creating a file with empty content.")
-        with open(runtimeCfgJson, 'w') as file:
-            json.dump({}, file, indent=4)
-        print(f"File '{runtimeCfgJson}' created with empty content: {{}}")
-    print("Successfully update RuntimeCfg.")
+        print("RuntimeCfg does not exist. Creating from individual parameters.")
+        # If RuntimeCfg doesn't exist, check for individual parameters at the top level
+        if 'run_params' in dashboard_config:
+            runtime_cfg_obj['run_params'] = dashboard_config['run_params']
+        if 'audio_params' in dashboard_config:
+            runtime_cfg_obj['audio_params'] = dashboard_config['audio_params']
+        if 'ui_params' in dashboard_config:
+            runtime_cfg_obj['ui_params'] = dashboard_config['ui_params']
+
+    # Add the RuntimeCfg object to the main config
+    new_runtime_cfg['RuntimeCfg'] = runtime_cfg_obj
+
+    # Write the complete runtime config with the proper nested structure
+    with open(runtimeCfgJson, 'w') as f:
+        json.dump(new_runtime_cfg, f, indent=4)
+    print(f"Created runtime config: {new_runtime_cfg}")
 
     # if the installation is for app, then stop here !!!
     if category == "vehicle":
