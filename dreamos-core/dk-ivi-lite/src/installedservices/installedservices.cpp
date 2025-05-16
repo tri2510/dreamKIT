@@ -249,6 +249,7 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
         QString dbc_vss_mount = " -v ./dk_vssgeneration/vss.json:/app/vss/vss.json:ro ";
         
         QString runtimecfgfile = DK_INSTALLED_SERVICE_FOLDER + appId + "/runtimecfg.json";
+        qDebug() << "installedservices.cpp";
         QString safeParams = getSafeDockerParam(runtimecfgfile);
         QString audioParams = getAudioParam(runtimecfgfile);
 
@@ -399,7 +400,7 @@ Q_INVOKABLE void ServicesAsync::removeServices(const int index)
 {
     qDebug() << __func__ << "@" << __LINE__ <<  " : index: " << index;
     // refresh install app view
-    //initInstalledServicesFromDB();
+    initInstalledServicesFromDB();
     QString mpDataPath = DK_INSTALLED_SERVICE_FOLDER + "installedservices.json";
     removeObjectById(mpDataPath, installedServicesList[index].id);
 }

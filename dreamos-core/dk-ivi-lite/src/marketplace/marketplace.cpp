@@ -411,9 +411,13 @@ Q_INVOKABLE void AppAsync::installApp(const int index)
     QString appName = searchedAppList[index].name;
     QString thumbnail = searchedAppList[index].iconPath;
     
-    qDebug() << "Installing app:" << appName << "at index:" << index;
+    // Check if this is a service (important: do this check before any file operations)
+    bool isService = searchedAppList[index].category.contains("vehicle-service", Qt::CaseInsensitive);
+    
+    qDebug() << "Installing " << (isService ? "service" : "app") << ": " << appName << " at index: " << index;
     qDebug() << "App ID:" << appId;
     qDebug() << "Thumbnail:" << thumbnail;
+    qDebug() << "Is Service:" << isService;
 
     // Debug environment variables
     qDebug() << "DK_VCU_USERNAME:" << DK_VCU_USERNAME;
@@ -439,55 +443,6 @@ Q_INVOKABLE void AppAsync::installApp(const int index)
     int cmdResult = system(cmd.toUtf8());
     qDebug() << "Docker command result code:" << cmdResult;
 
-    // Update the CSV file
-    QString csvPath = "installedapps/installedapps.csv";
-    qDebug() << "CSV path:" << csvPath;
-    QFile csvFile(csvPath);
-    
-    // Create directory if it doesn't exist
-    QDir dir("installedapps");
-    qDebug() << "installedapps directory exists:" << dir.exists();
-    if (!dir.exists()) {
-        qDebug() << "Creating installedapps directory...";
-        bool dirCreated = dir.mkpath(".");
-        qDebug() << "Directory creation result:" << dirCreated;
-        if (!dirCreated) {
-            qDebug() << "Directory creation failed - check permissions";
-        }
-    }
-    
-    // Check if file exists and create header if needed
-    bool fileExists = csvFile.exists();
-    qDebug() << "CSV file exists:" << fileExists;
-    
-    if (!fileExists) {
-        qDebug() << "Creating CSV file with header";
-        bool fileOpened = csvFile.open(QIODevice::WriteOnly | QIODevice::Text);
-        qDebug() << "CSV file opened for header creation:" << fileOpened;
-        if (fileOpened) {
-            QTextStream stream(&csvFile);
-            stream << "foldername,displayname,executable,iconpath\n";
-            csvFile.close();
-            qDebug() << "CSV header written";
-        } else {
-            qDebug() << "CSV file creation error:" << csvFile.errorString();
-        }
-    }
-    
-    // Append the new app to the CSV
-    qDebug() << "Appending to CSV file";
-    bool csvOpened = csvFile.open(QIODevice::Append | QIODevice::Text);
-    qDebug() << "CSV file opened for append:" << csvOpened;
-    if (csvOpened) {
-        QTextStream stream(&csvFile);
-        stream << appId << "," << appName << ",start.sh," << thumbnail << "\n";
-        csvFile.close();
-        qDebug() << "App appended to CSV";
-    } else {
-        qDebug() << "CSV append error:" << csvFile.errorString();
-    }
-
-    // Also update the JSON file for installedvapps
     // First, ensure DK_CONTAINER_ROOT is set properly
     if (DK_CONTAINER_ROOT.isEmpty()) {
         DK_CONTAINER_ROOT = qgetenv("DK_CONTAINER_ROOT");
@@ -497,88 +452,179 @@ Q_INVOKABLE void AppAsync::installApp(const int index)
             DK_CONTAINER_ROOT = "./";
         }
     }
+
+    // Create a JSON object for the app/service
+    QJsonObject appObj;
+    appObj["_id"] = appId;
+    appObj["name"] = appName;
+    appObj["thumbnail"] = thumbnail;
+    appObj["downloads"] = 0;
+    appObj["category"] = isService ? "vehicle-service" : "vehicle";
     
-    QString jsonFolderPath = DK_CONTAINER_ROOT + "dk_installedapps/";
-    QString jsonPath = jsonFolderPath + "installedapps.json";
+    // Create a createdBy object
+    QJsonObject createdBy;
+    createdBy["fullName"] = "Unknown";
+    appObj["createdBy"] = createdBy;
     
-    qDebug() << "JSON folder path:" << jsonFolderPath;
-    qDebug() << "JSON file path:" << jsonPath;
-    
-    // Create JSON directory if needed
-    QDir jsonDir(jsonFolderPath);
-    qDebug() << "JSON directory exists:" << jsonDir.exists();
-    if (!jsonDir.exists()) {
-        qDebug() << "Creating JSON directory...";
-        bool jsonDirCreated = jsonDir.mkpath(".");
-        qDebug() << "JSON directory creation result:" << jsonDirCreated;
-        if (!jsonDirCreated) {
-            qDebug() << "JSON directory creation failed - check permissions";
+    if (isService) {
+        // ======= SERVICE INSTALLATION PATH =======
+        qDebug() << "Processing as a SERVICE";
+        
+        // For services, save to services JSON
+        QString servicesJsonFolderPath = DK_CONTAINER_ROOT + "dk_installedservices/";
+        QString servicesJsonPath = servicesJsonFolderPath + "installedservices.json";
+        
+        qDebug() << "Saving to services JSON:" << servicesJsonPath;
+        
+        // Create services JSON directory if needed
+        QDir servicesJsonDir(servicesJsonFolderPath);
+        if (!servicesJsonDir.exists()) {
+            bool dirCreated = servicesJsonDir.mkpath(".");
+            qDebug() << "Services directory creation result:" << dirCreated;
         }
-    }
-    
-    // Read existing JSON file or create empty array
-    QJsonArray jsonArray;
-    QFile jsonFile(jsonPath);
-    qDebug() << "JSON file exists:" << jsonFile.exists();
-    
-    if (jsonFile.exists() && jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "Reading existing JSON file";
-        QByteArray jsonData = jsonFile.readAll();
-        jsonFile.close();
-        QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-        if (!doc.isNull() && doc.isArray()) {
-            jsonArray = doc.array();
-            qDebug() << "JSON array read, size:" << jsonArray.size();
-        } else {
-            qDebug() << "JSON file is not a valid array";
+        
+        // Read existing services JSON file or create empty array
+        QJsonArray servicesJsonArray;
+        QFile servicesJsonFile(servicesJsonPath);
+        
+        if (servicesJsonFile.exists() && servicesJsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QByteArray jsonData = servicesJsonFile.readAll();
+            servicesJsonFile.close();
+            QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+            if (!doc.isNull() && doc.isArray()) {
+                servicesJsonArray = doc.array();
+                qDebug() << "Services JSON array read, size:" << servicesJsonArray.size();
+            }
         }
-    } else if (jsonFile.exists()) {
-        qDebug() << "JSON file exists but couldn't be opened, error:" << jsonFile.errorString();
+        
+        // Check if service already exists in services JSON
+        bool serviceExists = false;
+        for (int i = 0; i < servicesJsonArray.size(); i++) {
+            QJsonObject obj = servicesJsonArray[i].toObject();
+            if (obj["_id"].toString() == appId) {
+                serviceExists = true;
+                qDebug() << "Service already exists in JSON at index" << i;
+                break;
+            }
+        }
+        
+        // Add the service if it doesn't already exist
+        if (!serviceExists) {
+            servicesJsonArray.append(appObj);
+            
+            // Save updated services JSON array
+            if (servicesJsonFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QJsonDocument doc(servicesJsonArray);
+                servicesJsonFile.write(doc.toJson());
+                servicesJsonFile.close();
+                qDebug() << "Service JSON file updated with new service:" << appName;
+            } else {
+                qDebug() << "Service JSON file write error:" << servicesJsonFile.errorString();
+            }
+        }
     } else {
-        qDebug() << "JSON file doesn't exist, will create new";
-    }
-    
-    // Check if app already exists in JSON
-    bool appExists = false;
-    for (int i = 0; i < jsonArray.size(); i++) {
-        QJsonObject obj = jsonArray[i].toObject();
-        if (obj["_id"].toString() == appId) {
-            appExists = true;
-            qDebug() << "App already exists in JSON at index" << i;
-            break;
+        // ======= APP INSTALLATION PATH =======
+        qDebug() << "Processing as a regular APP";
+        
+        // Update the CSV file for regular apps
+        QString csvPath = "installedapps/installedapps.csv";
+        qDebug() << "CSV path:" << csvPath;
+        QFile csvFile(csvPath);
+        
+        // Create directory if it doesn't exist
+        QDir dir("installedapps");
+        qDebug() << "installedapps directory exists:" << dir.exists();
+        if (!dir.exists()) {
+            qDebug() << "Creating installedapps directory...";
+            bool dirCreated = dir.mkpath(".");
+            qDebug() << "Directory creation result:" << dirCreated;
+            if (!dirCreated) {
+                qDebug() << "Directory creation failed - check permissions";
+            }
         }
-    }
-    
-    // Add the app if it doesn't already exist
-    if (!appExists) {
-        qDebug() << "Adding app to JSON";
         
-        // Create a minimal JSON object for the app
-        QJsonObject appObj;
-        appObj["_id"] = appId;
-        appObj["name"] = appName;
-        appObj["category"] = "vehicle"; // Default category
-        appObj["thumbnail"] = thumbnail;
-        appObj["downloads"] = 0;
+        // Check if file exists and create header if needed
+        bool fileExists = csvFile.exists();
+        qDebug() << "CSV file exists:" << fileExists;
         
-        // Create a createdBy object
-        QJsonObject createdBy;
-        createdBy["fullName"] = "Unknown";
-        appObj["createdBy"] = createdBy;
+        if (!fileExists) {
+            qDebug() << "Creating CSV file with header";
+            bool fileOpened = csvFile.open(QIODevice::WriteOnly | QIODevice::Text);
+            qDebug() << "CSV file opened for header creation:" << fileOpened;
+            if (fileOpened) {
+                QTextStream stream(&csvFile);
+                stream << "foldername,displayname,executable,iconpath\n";
+                csvFile.close();
+                qDebug() << "CSV header written";
+            } else {
+                qDebug() << "CSV file creation error:" << csvFile.errorString();
+            }
+        }
         
-        jsonArray.append(appObj);
-        
-        // Save updated JSON array
-        qDebug() << "Saving JSON file";
-        bool jsonOpened = jsonFile.open(QIODevice::WriteOnly | QIODevice::Text);
-        qDebug() << "JSON file opened for writing:" << jsonOpened;
-        if (jsonOpened) {
-            QJsonDocument doc(jsonArray);
-            jsonFile.write(doc.toJson());
-            jsonFile.close();
-            qDebug() << "JSON file updated with new app, total apps:" << jsonArray.size();
+        // Append the new app to the CSV
+        qDebug() << "Appending to CSV file";
+        bool csvOpened = csvFile.open(QIODevice::Append | QIODevice::Text);
+        qDebug() << "CSV file opened for append:" << csvOpened;
+        if (csvOpened) {
+            QTextStream stream(&csvFile);
+            stream << appId << "," << appName << ",start.sh," << thumbnail << "\n";
+            csvFile.close();
+            qDebug() << "App appended to CSV";
         } else {
-            qDebug() << "JSON file write error:" << jsonFile.errorString();
+            qDebug() << "CSV append error:" << csvFile.errorString();
+        }
+        
+        // For regular apps, save to apps JSON
+        QString jsonFolderPath = DK_CONTAINER_ROOT + "dk_installedapps/";
+        QString jsonPath = jsonFolderPath + "installedapps.json";
+        
+        qDebug() << "Saving to apps JSON:" << jsonPath;
+        
+        // Create JSON directory if needed
+        QDir jsonDir(jsonFolderPath);
+        if (!jsonDir.exists()) {
+            bool jsonDirCreated = jsonDir.mkpath(".");
+            qDebug() << "JSON directory creation result:" << jsonDirCreated;
+        }
+        
+        // Read existing JSON file or create empty array
+        QJsonArray jsonArray;
+        QFile jsonFile(jsonPath);
+        
+        if (jsonFile.exists() && jsonFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QByteArray jsonData = jsonFile.readAll();
+            jsonFile.close();
+            QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+            if (!doc.isNull() && doc.isArray()) {
+                jsonArray = doc.array();
+                qDebug() << "JSON array read, size:" << jsonArray.size();
+            }
+        }
+        
+        // Check if app already exists in JSON
+        bool appExists = false;
+        for (int i = 0; i < jsonArray.size(); i++) {
+            QJsonObject obj = jsonArray[i].toObject();
+            if (obj["_id"].toString() == appId) {
+                appExists = true;
+                qDebug() << "App already exists in JSON at index" << i;
+                break;
+            }
+        }
+        
+        // Add the app if it doesn't already exist
+        if (!appExists) {
+            jsonArray.append(appObj);
+            
+            // Save updated JSON array
+            if (jsonFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QJsonDocument doc(jsonArray);
+                jsonFile.write(doc.toJson());
+                jsonFile.close();
+                qDebug() << "JSON file updated with new app, total apps:" << jsonArray.size();
+            } else {
+                qDebug() << "JSON file write error:" << jsonFile.errorString();
+            }
         }
     }
 

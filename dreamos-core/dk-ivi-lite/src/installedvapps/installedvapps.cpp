@@ -15,7 +15,7 @@ extern QString DK_ARCH;
 extern QString DK_DOCKER_HUB_NAMESPACE;
 extern QString DK_CONTAINER_ROOT;
 
-QString DK_INSTALLED_APPS_FOLDER = "/home/htr1hc/.dk/dk_installedservices/";
+QString DK_INSTALLED_APPS_FOLDER = "/home/htr1hc/.dk/dk_installedapps/";
 
 InstalledVappsCheckThread::InstalledVappsCheckThread(VappsAsync *parent)
 {
@@ -247,6 +247,7 @@ Q_INVOKABLE void VappsAsync::executeServices(int appIdx, const QString name, con
         cmd = "";
 
         QString runtimecfgfile = DK_INSTALLED_APPS_FOLDER + appId + "/runtimecfg.json";
+        qDebug() << "installedapps.cpp";
         QString safeParams = getSafeDockerParam(runtimecfgfile);
         QString audioParams = getAudioParam(runtimecfgfile);
         QString uiParams = getUiParam(runtimecfgfile);
@@ -398,7 +399,7 @@ Q_INVOKABLE void VappsAsync::removeServices(const int index)
 {
     qDebug() << __func__ << "@" << __LINE__ <<  " : index: " << index;
     // refresh install app view
-    //initInstalledVappsFromDB();
+    initInstalledVappsFromDB();
     QString mpDataPath = DK_INSTALLED_APPS_FOLDER + "installedapps.json";
     removeObjectById(mpDataPath, installedVappsList[index].id);
 }
