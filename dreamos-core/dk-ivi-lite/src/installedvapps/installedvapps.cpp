@@ -182,21 +182,55 @@ Q_INVOKABLE void VappsAsync::initInstalledVappsFromDB()
         // Use the name as the folder name
         appInfo.foldername = appInfo.id;
 
-        // Extract dashboardConfig or default to empty
-        // appInfo.packagelink = jsonObject["dashboardConfig"].toString().isEmpty() ? "N/A" : jsonObject["dashboardConfig"].toString();
-        // Extract and parse dashboardConfig
-        QString dashboardConfigStr = jsonObject["dashboardConfig"].toString();
-        if (!dashboardConfigStr.isEmpty()) {
-            QJsonDocument dashboardDoc = QJsonDocument::fromJson(dashboardConfigStr.toUtf8());
-            QJsonObject dashboardObj = dashboardDoc.object();
-    
-            if (dashboardObj.contains("DockerImageURL")) {
-                appInfo.packagelink = dashboardObj["DockerImageURL"].toString();
+        // Check for Docker image URL in runtime configuration file
+        QString runtimeConfigPath = DK_INSTALLED_APPS_FOLDER + appInfo.id + "/runtimecfg.json";
+        QFile runtimeFile(runtimeConfigPath);
+        if (runtimeFile.exists() && runtimeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QByteArray runtimeData = runtimeFile.readAll();
+            runtimeFile.close();
+            
+            QJsonDocument runtimeDoc = QJsonDocument::fromJson(runtimeData);
+            if (!runtimeDoc.isNull() && runtimeDoc.isObject()) {
+                QJsonObject runtimeObj = runtimeDoc.object();
+                
+                // First check if DockerImageURL exists at the root level
+                if (runtimeObj.contains("DockerImageURL")) {
+                    appInfo.packagelink = runtimeObj["DockerImageURL"].toString();
+                } 
+                // Then check in dashboardConfig if it exists
+                else {
+                    QString dashboardConfigStr = jsonObject["dashboardConfig"].toString();
+                    if (!dashboardConfigStr.isEmpty()) {
+                        QJsonDocument dashboardDoc = QJsonDocument::fromJson(dashboardConfigStr.toUtf8());
+                        QJsonObject dashboardObj = dashboardDoc.object();
+                
+                        if (dashboardObj.contains("DockerImageURL")) {
+                            appInfo.packagelink = dashboardObj["DockerImageURL"].toString();
+                        } else {
+                            appInfo.packagelink = "N/A";
+                        }
+                    } else {
+                        appInfo.packagelink = "N/A";
+                    }
+                }
             } else {
                 appInfo.packagelink = "N/A";
             }
         } else {
-            appInfo.packagelink = "N/A";
+            // If runtime config doesn't exist, fall back to dashboardConfig
+            QString dashboardConfigStr = jsonObject["dashboardConfig"].toString();
+            if (!dashboardConfigStr.isEmpty()) {
+                QJsonDocument dashboardDoc = QJsonDocument::fromJson(dashboardConfigStr.toUtf8());
+                QJsonObject dashboardObj = dashboardDoc.object();
+        
+                if (dashboardObj.contains("DockerImageURL")) {
+                    appInfo.packagelink = dashboardObj["DockerImageURL"].toString();
+                } else {
+                    appInfo.packagelink = "N/A";
+                }
+            } else {
+                appInfo.packagelink = "N/A";
+            }
         }
 
         // For this example, assume all apps are not installed
@@ -242,6 +276,11 @@ Q_INVOKABLE void VappsAsync::executeServices(int appIdx, const QString name, con
             cmd = "> " + dockerps;
             system(cmd.toUtf8()); 
         }
+
+        // Ensure network exists before trying to run the container
+        cmd = "docker network ls | grep dk_network || docker network create dk_network";
+        system(cmd.toUtf8());
+        QThread::msleep(500); // Give some time for the network to be created if needed
 
         // QString cmd;
         cmd = "";

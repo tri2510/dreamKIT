@@ -86,14 +86,16 @@ Q_INVOKABLE void AppAsync::initInstalledAppFromDB()
     qDebug() << "File is readable:" << fileInfo.isReadable();
     
     if (!file.open(QIODevice::ReadOnly)) {
-        qDebug() << "ERROR: Failed to open CSV file:" << file.errorString();
+        qDebug() << "Failed to open CSV file:" << file.errorString();
         
         // Try to create directory if it doesn't exist
         if (!dir.exists()) {
             qDebug() << "Directory doesn't exist, attempting to create it...";
             bool dirCreated = dir.mkpath(".");
             qDebug() << "Directory creation result:" << dirCreated;
-            
+        }
+        else
+        {
             // Try to create an empty CSV file
             QFile newFile(csvPath);
             if (newFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
