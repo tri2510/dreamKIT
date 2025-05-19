@@ -6,6 +6,8 @@
 #include <QThread>
 #include <QDebug>
 #include <QMutex>
+#include <QDir>
+
 
 QMutex installedServicesMutex;
 
@@ -14,19 +16,19 @@ extern QString DK_ARCH;
 extern QString DK_DOCKER_HUB_NAMESPACE;
 extern QString DK_CONTAINER_ROOT;
 
-QString DK_INSTALLED_SERVICE_FOLDER = "";
+QString DK_INSTALLED_SERVICE_FOLDER = "~/.dk/dk_installedservices/";
 
 InstalledServicesCheckThread::InstalledServicesCheckThread(ServicesAsync *parent)
 {
     QString mpDataPath = DK_INSTALLED_SERVICE_FOLDER + "installedservices.json";
-    // qDebug() << __func__ << "@" << __LINE__ <<  " : mpDataPath: " << mpDataPath;
+    // //////qDebug() << __func__ << "@" << __LINE__ <<  " : mpDataPath: " << mpDataPath;
 
     m_serviceAsync = parent;
     m_filewatcher = new QFileSystemWatcher(this);
 
     if (m_filewatcher) {
         QString path = mpDataPath;
-        qDebug() << __func__ << __LINE__ << " m_filewatcher : " << path;
+        //////qDebug() << __func__ << __LINE__ << " m_filewatcher : " << path;
 
         if (QFile::exists(path)) {
             m_filewatcher->addPath(path);
@@ -57,7 +59,7 @@ void InstalledServicesCheckThread::run()
             MyFile.open(QIODevice::ReadWrite);
             QTextStream in (&MyFile);
             QString raw = in.readAll();
-            qDebug() << "reprint docker ps: \n" << raw;
+            //////qDebug() << "reprint docker ps: \n" << raw;
             if (raw.contains(m_appId, Qt::CaseSensitivity::CaseSensitive)) {
                 emit resultReady(m_appId, true, "<b>"+m_appName+"</b>" + " is started successfully.");
             }
@@ -81,8 +83,42 @@ ServicesAsync::ServicesAsync()
     if(DK_CONTAINER_ROOT.isEmpty()) {
         DK_CONTAINER_ROOT = qgetenv("DK_CONTAINER_ROOT");
     }
+    
+    // Handle tilde expansion if needed
+    if (DK_CONTAINER_ROOT.startsWith("~")) {
+        QString homeDir = QDir::homePath();
+        //////qDebug() << __func__ << __LINE__ << "Expanding ~ to home directory:" << homeDir;
+        DK_CONTAINER_ROOT.replace(0, 1, homeDir);
+    }
+    
     DK_INSTALLED_SERVICE_FOLDER = DK_CONTAINER_ROOT + "dk_installedservices/";
-    qDebug() << __func__ << "@" << __LINE__ <<  " : DK_INSTALLED_SERVICE_FOLDER: " << DK_INSTALLED_SERVICE_FOLDER;
+    //////qDebug() << __func__ << __LINE__ << "DK_INSTALLED_SERVICE_FOLDER: " << DK_INSTALLED_SERVICE_FOLDER;
+    
+    // Ensure the directory exists
+    QDir serviceDir(DK_INSTALLED_SERVICE_FOLDER);
+    if (!serviceDir.exists()) {
+        //////qDebug() << __func__ << __LINE__ << "Creating services directory:" << serviceDir.absolutePath();
+        bool success = serviceDir.mkpath(".");
+        //////qDebug() << __func__ << __LINE__ << "Services directory creation " << (success ? "successful" : "FAILED");
+    }
+    
+    // Create default installedservices.json if it doesn't exist
+    QString servicesJsonPath = DK_INSTALLED_SERVICE_FOLDER + "installedservices.json";
+    QFile servicesJsonFile(servicesJsonPath);
+    if (!servicesJsonFile.exists()) {
+        //////qDebug() << __func__ << __LINE__ << "Creating default installedservices.json file";
+        if (servicesJsonFile.open(QIODevice::WriteOnly)) {
+            // Create an empty JSON array
+            QJsonArray emptyArray;
+            QJsonDocument doc(emptyArray);
+            
+            servicesJsonFile.write(doc.toJson());
+            servicesJsonFile.close();
+            //////qDebug() << __func__ << __LINE__ << "Default installedservices.json file created";
+        } else {
+            //////qDebug() << __func__ << __LINE__ << "Failed to create installedservices.json file";
+        }
+    }
 
     m_workerThread = new InstalledServicesCheckThread(this);
     connect(m_workerThread, &InstalledServicesCheckThread::resultReady, this, &ServicesAsync::handleResults);
@@ -96,10 +132,10 @@ ServicesAsync::ServicesAsync()
 
 Q_INVOKABLE void ServicesAsync::openAppEditor(int idx)
 {
-    qDebug() << __func__ << __LINE__ << " index = " << idx;
+    //////qDebug() << __func__ << __LINE__ << " index = " << idx;
 
     if (idx >= installedServicesList.size()) {
-        qDebug() << "index out of range";
+        //////qDebug() << "index out of range";
         return;
     }
 
@@ -108,7 +144,7 @@ Q_INVOKABLE void ServicesAsync::openAppEditor(int idx)
     QString cmd;
     cmd = "mkdir -p " + vsCodeUserDataFolder + ";";
     cmd += "code " + thisServiceFolder + " --no-sandbox --user-data-dir=" + vsCodeUserDataFolder + ";";
-    qDebug() << cmd;
+    //////qDebug() << cmd;
     system(cmd.toUtf8());
 }
 
@@ -120,12 +156,12 @@ Q_INVOKABLE void ServicesAsync::initInstalledServicesFromDB()
     installedServicesList.clear();
 
     QString mpDataPath = DK_INSTALLED_SERVICE_FOLDER + "installedservices.json";
-    qDebug() << __func__ << "@" << __LINE__ <<  " : mpDataPath: " << mpDataPath;
+    //////qDebug() << __func__ << "@" << __LINE__ <<  " : mpDataPath: " << mpDataPath;
 
     // Read the JSON file
     QFile file(mpDataPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "Failed to open file.";
+        //////qDebug() << "Failed to open file.";
         return;
     }
 
@@ -135,7 +171,7 @@ Q_INVOKABLE void ServicesAsync::initInstalledServicesFromDB()
     // Parse the JSON data
     QJsonDocument document = QJsonDocument::fromJson(jsonData);
     if (document.isNull() || !document.isArray()) {
-        qDebug() << __func__ << "@" << __LINE__ << ": Invalid JSON format.\n" << jsonData;
+        //////qDebug() << __func__ << "@" << __LINE__ << ": Invalid JSON format.\n" << jsonData;
         return;
     }
 
@@ -204,7 +240,7 @@ Q_INVOKABLE void ServicesAsync::initInstalledServicesFromDB()
 
         installedServicesList.append(appInfo);
     }
-    qDebug() << "Services list loaded, total apps found:" << installedServicesList.size();
+    //////qDebug() << "Services list loaded, total apps found:" << installedServicesList.size();
 
     if (installedServicesList.size()) {
         for(int i = 0; i < installedServicesList.size(); i++) {
@@ -233,7 +269,7 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
             MyFile.open(QIODevice::ReadWrite);
             QTextStream in (&MyFile);
             if (in.readAll().contains(appId, Qt::CaseSensitivity::CaseSensitive)) {
-                qDebug() << appId << " is already open";
+                //////qDebug() << appId << " is already open";
                 cmd = "> " + dockerps;
                 system(cmd.toUtf8()); 
                 return;
@@ -245,16 +281,17 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
         // QString cmd;
         cmd = "";
 
-        QString dbc_default_path_mount = " -v /home/" + DK_VCU_USERNAME + "/.dk/dk_manager/vssmapping/dbc_default_values.json:/app/vss/dbc_default_values.json:ro ";
-        QString dbc_vss_mount = " -v /home/" + DK_VCU_USERNAME + "/.dk/dk_vssgeneration/vss.json:/app/vss/vss.json:ro ";
+        QString dbc_default_path_mount = " -v ./dk_manager/vssmapping/dbc_default_values.json:/app/vss/dbc_default_values.json:ro ";
+        QString dbc_vss_mount = " -v ./dk_vssgeneration/vss.json:/app/vss/vss.json:ro ";
         
         QString runtimecfgfile = DK_INSTALLED_SERVICE_FOLDER + appId + "/runtimecfg.json";
+        //////qDebug() << "installedservices.cpp";
         QString safeParams = getSafeDockerParam(runtimecfgfile);
         QString audioParams = getAudioParam(runtimecfgfile);
 
         // start service
-        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v /home/" + DK_VCU_USERNAME + "/.dk/dk_installedservices/" + appId + ":/app/runtime --network host " + dbc_default_path_mount + dbc_vss_mount + safeParams + audioParams + installedServicesList[appIdx].packagelink;
-        qDebug() << cmd;
+        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v " + "./dk_installedservices/" + appId + ":/app/runtime --network host " + dbc_default_path_mount + dbc_vss_mount + safeParams + audioParams + installedServicesList[appIdx].packagelink;
+        //////qDebug() << cmd;
         system(cmd.toUtf8());
 
         if (m_workerThread) {
@@ -265,7 +302,7 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
         QString cmd;
         cmd += "docker kill " + appId + " &";
         // cmd += "docker kill " + appId;
-        qDebug() << cmd;
+        //////qDebug() << cmd;
         system(cmd.toUtf8());
     }
 }
@@ -276,7 +313,7 @@ void readServicesList(const QString searchName, QList<ServicesListStruct> &Servi
     // Read the JSON file
     QFile file(mpDataPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "Failed to open file.";
+        //////qDebug() << "Failed to open file.";
         return;
     }
 
@@ -286,7 +323,7 @@ void readServicesList(const QString searchName, QList<ServicesListStruct> &Servi
     // Parse the JSON data
     QJsonDocument document = QJsonDocument::fromJson(jsonData);
     if (document.isNull() || !document.isArray()) {
-        qDebug() << __func__ << "@" << __LINE__ << ": Invalid JSON format.";
+        //////qDebug() << __func__ << "@" << __LINE__ << ": Invalid JSON format.";
         return;
     }
 
@@ -344,7 +381,7 @@ void readServicesList(const QString searchName, QList<ServicesListStruct> &Servi
         }
     }
 
-    qDebug() << "Services list loaded, total apps found:" << ServicesListInfo.size();
+    //////qDebug() << "Services list loaded, total apps found:" << ServicesListInfo.size();
 }
 
 void ServicesAsync::removeObjectById(const QString &filePath, const QString &idToRemove) {
@@ -375,7 +412,7 @@ void ServicesAsync::removeObjectById(const QString &filePath, const QString &idT
         if (obj.contains("_id") && obj["_id"].toString() == idToRemove) {
             // Remove the object from the array
             jsonArray.removeAt(i);
-            qDebug() << "Object with _id:" << idToRemove << "removed.";
+            //////qDebug() << "Object with _id:" << idToRemove << "removed.";
             break;
         }
     }
@@ -392,14 +429,14 @@ void ServicesAsync::removeObjectById(const QString &filePath, const QString &idT
     // Write the updated JSON data to the file
     file.write(updatedJsonDoc.toJson(QJsonDocument::Indented));
     file.close();
-    qDebug() << "Updated JSON file saved.";
+    //////qDebug() << "Updated JSON file saved.";
 }
 
 Q_INVOKABLE void ServicesAsync::removeServices(const int index)
 {
-    qDebug() << __func__ << "@" << __LINE__ <<  " : index: " << index;
+    //////qDebug() << __func__ << "@" << __LINE__ <<  " : index: " << index;
     // refresh install app view
-    //initInstalledServicesFromDB();
+    initInstalledServicesFromDB();
     QString mpDataPath = DK_INSTALLED_SERVICE_FOLDER + "installedservices.json";
     removeObjectById(mpDataPath, installedServicesList[index].id);
 }
@@ -420,20 +457,37 @@ void ServicesAsync::handleResults(QString appId, bool isStarted, QString msg)
 
 void ServicesAsync::fileChanged(const QString &path)
 {
-    qDebug() << __func__ << "@" << __LINE__ <<  " : path: " << path;
+    //////qDebug() << __func__ << "@" << __LINE__ <<  " : path: " << path;
     QThread::msleep(1000);
     initInstalledServicesFromDB();
 }
 
 void ServicesAsync::checkRunningAppSts()
 {    
-    QString appStsLog = DK_INSTALLED_SERVICE_FOLDER + "checkRunningServicesSts.log";
+    // Make sure the directory exists first
+    QDir serviceDir(DK_INSTALLED_SERVICE_FOLDER);
+    if (!serviceDir.exists()) {
+        //////qDebug() << __func__ << __LINE__ << "Creating services directory:" << DK_INSTALLED_SERVICE_FOLDER;
+        serviceDir.mkpath(".");
+    }
+    
+    // Use the correct log file name that matches the error message
+    QString appStsLog = DK_INSTALLED_SERVICE_FOLDER + "checkRunningAppSts.log";
+    
+    // Create the log file if it doesn't exist
+    QFile checkFile(appStsLog);
+    if (!checkFile.exists()) {
+        if (checkFile.open(QIODevice::WriteOnly)) {
+            checkFile.close();
+        }
+    }
+    
     QString cmd = "> " + appStsLog + "; docker ps > " + appStsLog;
     system(cmd.toUtf8());
     
     QFile logFile(appStsLog);
     if (!logFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qCritical() << "Failed to open log file: checkRunningServicesSts.log";
+        qCritical() << "Failed to open log file: checkRunningAppSts.log";
         return;
     }
 
@@ -446,14 +500,14 @@ void ServicesAsync::checkRunningAppSts()
     }
 
     int len = installedServicesList.size();
-    // qDebug() << __func__ << "@" << __LINE__ <<  " : installedServicesList len: " << len;
+    // //////qDebug() << __func__ << "@" << __LINE__ <<  " : installedServicesList len: " << len;
     for (int i = 0; i < len; i++) {
         if (!installedServicesList[i].id.isEmpty()) {
             if (content.contains(installedServicesList[i].id)) {
-                // qDebug() << "App ID" << installedServicesList[i].appId << "is running.";
+                // //////qDebug() << "App ID" << installedServicesList[i].appId << "is running.";
                 updateServicesRunningSts(installedServicesList[i].id, true, i);
             } else {
-                // qDebug() << "App ID" << installedServicesList[i].appId << "is not running.";
+                // //////qDebug() << "App ID" << installedServicesList[i].appId << "is not running.";
                 updateServicesRunningSts(installedServicesList[i].id, false, i);
             }
         }        

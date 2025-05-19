@@ -89,7 +89,7 @@ void VssThread::run()
 
     #ifdef USING_VSS
     if(!isPyEnvOk) {
-        qDebug() << "Python Environment Setup is failed. This IVI shall not get access to VSS data.\n \
+        //////qDebug() << "Python Environment Setup is failed. This IVI shall not get access to VSS data.\n \
         Below could be the issues:\n \
         1. Python dev lib is missing.\n \
         2. Missing vssclient.py. Let's copy from retrofitivi/vss/vssclient.py to build folder.";
@@ -98,7 +98,7 @@ void VssThread::run()
     #endif
     
     while(1) {
-        //qDebug() << "VssThread::run";
+        ////////qDebug() << "VssThread::run";
         QString ttsText;
         QString currentTimeStamp="";
 
@@ -116,7 +116,7 @@ void VssThread::run()
         currentTimeStamp="";
         bool isAttacked = getBool_VssApiValue("Vehicle.Security.isAttacked", currentTimeStamp);
         if (currentTimeStamp == "") {
-            qDebug() << "Vehicle.Security.isAttacked is not set";
+            //////qDebug() << "Vehicle.Security.isAttacked is not set";
         }
         else {
             if (isAttacked != oldIsAttackedSts) {
@@ -140,7 +140,7 @@ void VssThread::run()
             currentTimeStamp="";
             u_int32_t secReact = getUint32_VssApiValue("Vehicle.Security.IDPS.VehicleReaction", currentTimeStamp);
             if (currentTimeStamp == "") {
-                qDebug() << "Vehicle.Security.IDPS.VehicleReaction is not set";
+                //////qDebug() << "Vehicle.Security.IDPS.VehicleReaction is not set";
             }
             else {
                 if (oldVehicleReact != secReact) {
@@ -179,7 +179,7 @@ bool VssThread::getBool_VssApiValue(QString apiName, QString &currentTimeStamp)
             if (PyTuple_Check(pValue)) {
                 PyObject *pVal = PyTuple_GetItem(pValue, 0);
                 PyObject *pTime = PyTuple_GetItem(pValue, 1);
-                // qDebug() << "PyTuple_Check True";
+                // //////qDebug() << "PyTuple_Check True";
 
                 if (pVal && pTime) {
                     bool result = PyObject_IsTrue(pVal);
@@ -195,7 +195,7 @@ bool VssThread::getBool_VssApiValue(QString apiName, QString &currentTimeStamp)
                  }
             }
             else {
-                // qDebug() << "PyTuple_Check False";
+                // //////qDebug() << "PyTuple_Check False";
                 if (pValue != nullptr) {
                     if (currentTimeStamp == "") 
                         return false;
@@ -239,7 +239,7 @@ u_int32_t VssThread::getUint32_VssApiValue(QString apiName, QString &currentTime
             if (PyTuple_Check(pValue)) {
                 PyObject *pVal = PyTuple_GetItem(pValue, 0);
                 PyObject *pTime = PyTuple_GetItem(pValue, 1);
-                // qDebug() << "PyTuple_Check True";
+                // //////qDebug() << "PyTuple_Check True";
 
                 if (pVal && pTime) {
                     u_int32_t result = PyLong_AsUnsignedLong(pVal);
@@ -255,7 +255,7 @@ u_int32_t VssThread::getUint32_VssApiValue(QString apiName, QString &currentTime
                  }
             }
             else {
-                // qDebug() << "PyTuple_Check False";
+                // //////qDebug() << "PyTuple_Check False";
                 if (pValue != nullptr) {
                     if (currentTimeStamp == "") 
                         return false;
@@ -299,7 +299,7 @@ QString VssThread::getString_VssApiValue(QString apiName, QString &currentTimeSt
             if (PyTuple_Check(pValue)) {
                 PyObject *pVal = PyTuple_GetItem(pValue, 0);
                 PyObject *pTime = PyTuple_GetItem(pValue, 1);
-                // qDebug() << "PyTuple_Check True";
+                // //////qDebug() << "PyTuple_Check True";
 
                 if (pVal && pTime) {
                     const char *resultCStr = PyUnicode_AsUTF8(pVal);
@@ -316,7 +316,7 @@ QString VssThread::getString_VssApiValue(QString apiName, QString &currentTimeSt
                  }
             }
             else {
-                // qDebug() << "PyTuple_Check False";
+                // //////qDebug() << "PyTuple_Check False";
                 if (pValue != nullptr) {
                     // Convert the result to a C++ string
                     const char* resultCStr = PyUnicode_AsUTF8(pValue);

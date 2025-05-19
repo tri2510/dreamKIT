@@ -135,6 +135,7 @@ QStringList buildSafeDockerParams(const QJsonObject& jsonConfig) {
 
 QString getSafeDockerParam(QString runtimecfgFile) {
     // Load JSON configuration
+    qDebug() << "runtimecfgFile: " << runtimecfgFile;
     QFile file(runtimecfgFile);
     if (!file.open(QIODevice::ReadOnly)) {
         qWarning("Couldn't open runtimecfgFile file.");

@@ -5,6 +5,8 @@
 #include <QThread>
 #include <QDebug>
 #include <QMutex>
+#include <QDir>
+
 
 #include "../installedservices/unsafeparamcheck.hpp"
 
@@ -15,19 +17,19 @@ extern QString DK_ARCH;
 extern QString DK_DOCKER_HUB_NAMESPACE;
 extern QString DK_CONTAINER_ROOT;
 
-QString DK_INSTALLED_APPS_FOLDER = "";
+QString DK_INSTALLED_APPS_FOLDER = "~/.dk/dk_installedapps/";
 
 InstalledVappsCheckThread::InstalledVappsCheckThread(VappsAsync *parent)
 {
     QString mpDataPath = DK_INSTALLED_APPS_FOLDER + "installedapps.json";
-    // qDebug() << __func__ << "@" << __LINE__ <<  " : mpDataPath: " << mpDataPath;
+    // //////qDebug() << __func__ << "@" << __LINE__ <<  " : mpDataPath: " << mpDataPath;
 
     m_serviceAsync = parent;
     m_filewatcher = new QFileSystemWatcher(this);
 
     if (m_filewatcher) {
         QString path = mpDataPath;
-        qDebug() << __func__ << __LINE__ << " m_filewatcher : " << path;
+        //////qDebug() << __func__ << __LINE__ << " m_filewatcher : " << path;
 
         if (QFile::exists(path)) {
             m_filewatcher->addPath(path);
@@ -58,7 +60,7 @@ void InstalledVappsCheckThread::run()
             MyFile.open(QIODevice::ReadWrite);
             QTextStream in (&MyFile);
             QString raw = in.readAll();
-            qDebug() << "reprint docker ps: \n" << raw;
+            //////qDebug() << "reprint docker ps: \n" << raw;
             if (raw.contains(m_appId, Qt::CaseSensitivity::CaseSensitive)) {
                 emit resultReady(m_appId, true, "<b>"+m_appName+"</b>" + " is started successfully.");
             }
@@ -83,7 +85,7 @@ VappsAsync::VappsAsync()
         DK_CONTAINER_ROOT = qgetenv("DK_CONTAINER_ROOT");
     }
     DK_INSTALLED_APPS_FOLDER = DK_CONTAINER_ROOT + "dk_installedapps/";
-    qDebug() << __func__ << "@" << __LINE__ <<  " : DK_INSTALLED_APPS_FOLDER: " << DK_INSTALLED_APPS_FOLDER;
+    //////qDebug() << __func__ << "@" << __LINE__ <<  " : DK_INSTALLED_APPS_FOLDER: " << DK_INSTALLED_APPS_FOLDER;
 
     m_workerThread = new InstalledVappsCheckThread(this);
     connect(m_workerThread, &InstalledVappsCheckThread::resultReady, this, &VappsAsync::handleResults);
@@ -97,10 +99,10 @@ VappsAsync::VappsAsync()
 
 Q_INVOKABLE void VappsAsync::openAppEditor(int idx)
 {
-    qDebug() << __func__ << __LINE__ << " index = " << idx;
+    //////qDebug() << __func__ << __LINE__ << " index = " << idx;
 
     if (idx >= installedVappsList.size()) {
-        qDebug() << "index out of range";
+        //////qDebug() << "index out of range";
         return;
     }
 
@@ -109,7 +111,7 @@ Q_INVOKABLE void VappsAsync::openAppEditor(int idx)
     QString cmd;
     cmd = "mkdir -p " + vsCodeUserDataFolder + ";";
     cmd += "code " + thisServiceFolder + " --no-sandbox --user-data-dir=" + vsCodeUserDataFolder + ";";
-    qDebug() << cmd;
+    //////qDebug() << cmd;
     system(cmd.toUtf8());
 }
 
@@ -121,12 +123,12 @@ Q_INVOKABLE void VappsAsync::initInstalledVappsFromDB()
     installedVappsList.clear();
 
     QString mpDataPath = DK_INSTALLED_APPS_FOLDER + "installedapps.json";
-    qDebug() << __func__ << "@" << __LINE__ <<  " : mpDataPath: " << mpDataPath;
+    //////qDebug() << __func__ << "@" << __LINE__ <<  " : mpDataPath: " << mpDataPath;
 
     // Read the JSON file
     QFile file(mpDataPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "Failed to open file.";
+        //////qDebug() << "Failed to open file.";
         return;
     }
 
@@ -136,7 +138,7 @@ Q_INVOKABLE void VappsAsync::initInstalledVappsFromDB()
     // Parse the JSON data
     QJsonDocument document = QJsonDocument::fromJson(jsonData);
     if (document.isNull() || !document.isArray()) {
-        qDebug() << __func__ << "@" << __LINE__ << ": Invalid JSON format.\n" << jsonData;
+        //////qDebug() << __func__ << "@" << __LINE__ << ": Invalid JSON format.\n" << jsonData;
         return;
     }
 
@@ -182,21 +184,55 @@ Q_INVOKABLE void VappsAsync::initInstalledVappsFromDB()
         // Use the name as the folder name
         appInfo.foldername = appInfo.id;
 
-        // Extract dashboardConfig or default to empty
-        // appInfo.packagelink = jsonObject["dashboardConfig"].toString().isEmpty() ? "N/A" : jsonObject["dashboardConfig"].toString();
-        // Extract and parse dashboardConfig
-        QString dashboardConfigStr = jsonObject["dashboardConfig"].toString();
-        if (!dashboardConfigStr.isEmpty()) {
-            QJsonDocument dashboardDoc = QJsonDocument::fromJson(dashboardConfigStr.toUtf8());
-            QJsonObject dashboardObj = dashboardDoc.object();
-    
-            if (dashboardObj.contains("DockerImageURL")) {
-                appInfo.packagelink = dashboardObj["DockerImageURL"].toString();
+        // Check for Docker image URL in runtime configuration file
+        QString runtimeConfigPath = DK_INSTALLED_APPS_FOLDER + appInfo.id + "/runtimecfg.json";
+        QFile runtimeFile(runtimeConfigPath);
+        if (runtimeFile.exists() && runtimeFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QByteArray runtimeData = runtimeFile.readAll();
+            runtimeFile.close();
+            
+            QJsonDocument runtimeDoc = QJsonDocument::fromJson(runtimeData);
+            if (!runtimeDoc.isNull() && runtimeDoc.isObject()) {
+                QJsonObject runtimeObj = runtimeDoc.object();
+                
+                // First check if DockerImageURL exists at the root level
+                if (runtimeObj.contains("DockerImageURL")) {
+                    appInfo.packagelink = runtimeObj["DockerImageURL"].toString();
+                } 
+                // Then check in dashboardConfig if it exists
+                else {
+                    QString dashboardConfigStr = jsonObject["dashboardConfig"].toString();
+                    if (!dashboardConfigStr.isEmpty()) {
+                        QJsonDocument dashboardDoc = QJsonDocument::fromJson(dashboardConfigStr.toUtf8());
+                        QJsonObject dashboardObj = dashboardDoc.object();
+                
+                        if (dashboardObj.contains("DockerImageURL")) {
+                            appInfo.packagelink = dashboardObj["DockerImageURL"].toString();
+                        } else {
+                            appInfo.packagelink = "N/A";
+                        }
+                    } else {
+                        appInfo.packagelink = "N/A";
+                    }
+                }
             } else {
                 appInfo.packagelink = "N/A";
             }
         } else {
-            appInfo.packagelink = "N/A";
+            // If runtime config doesn't exist, fall back to dashboardConfig
+            QString dashboardConfigStr = jsonObject["dashboardConfig"].toString();
+            if (!dashboardConfigStr.isEmpty()) {
+                QJsonDocument dashboardDoc = QJsonDocument::fromJson(dashboardConfigStr.toUtf8());
+                QJsonObject dashboardObj = dashboardDoc.object();
+        
+                if (dashboardObj.contains("DockerImageURL")) {
+                    appInfo.packagelink = dashboardObj["DockerImageURL"].toString();
+                } else {
+                    appInfo.packagelink = "N/A";
+                }
+            } else {
+                appInfo.packagelink = "N/A";
+            }
         }
 
         // For this example, assume all apps are not installed
@@ -205,7 +241,7 @@ Q_INVOKABLE void VappsAsync::initInstalledVappsFromDB()
 
         installedVappsList.append(appInfo);
     }
-    qDebug() << "Services list loaded, total apps found:" << installedVappsList.size();
+    //////qDebug() << "Services list loaded, total apps found:" << installedVappsList.size();
 
     if (installedVappsList.size()) {
         for(int i = 0; i < installedVappsList.size(); i++) {
@@ -243,16 +279,22 @@ Q_INVOKABLE void VappsAsync::executeServices(int appIdx, const QString name, con
             system(cmd.toUtf8()); 
         }
 
+        // Ensure network exists before trying to run the container
+        cmd = "docker network ls | grep dk_network || docker network create dk_network";
+        system(cmd.toUtf8());
+        QThread::msleep(500); // Give some time for the network to be created if needed
+
         // QString cmd;
         cmd = "";
 
         QString runtimecfgfile = DK_INSTALLED_APPS_FOLDER + appId + "/runtimecfg.json";
+        qDebug() << "installedapps.cpp";
         QString safeParams = getSafeDockerParam(runtimecfgfile);
         QString audioParams = getAudioParam(runtimecfgfile);
         QString uiParams = getUiParam(runtimecfgfile);
 
         // start digital.auto app
-        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v /home/" + DK_VCU_USERNAME + "/.dk/dk_installedapps/" + appId + ":/app/runtime -v /home/" + DK_VCU_USERNAME + "/.dk/dk_vssgeneration/vehicle_gen:/home/vss/vehicle_gen:ro --network dk_network " + safeParams + audioParams + uiParams + installedVappsList[appIdx].packagelink;
+        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v $(pwd)/dk_installedapps/" + appId + ":/app/runtime -v $(pwd)/dk_vssgeneration/vehicle_gen:/home/vss/vehicle_gen:ro --network dk_network " + safeParams + audioParams + uiParams + installedVappsList[appIdx].packagelink;
         qDebug() << cmd;
         system(cmd.toUtf8());
 
@@ -264,7 +306,7 @@ Q_INVOKABLE void VappsAsync::executeServices(int appIdx, const QString name, con
         QString cmd;
         cmd += "docker kill " + appId + " &";
         // cmd += "docker kill " + appId;
-        qDebug() << cmd;
+        //////qDebug() << cmd;
         system(cmd.toUtf8());
     }
 }
@@ -275,7 +317,7 @@ void readServicesList(const QString searchName, QList<VappsListStruct> &VappsLis
     // Read the JSON file
     QFile file(mpDataPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "Failed to open file.";
+        //////qDebug() << "Failed to open file.";
         return;
     }
 
@@ -285,7 +327,7 @@ void readServicesList(const QString searchName, QList<VappsListStruct> &VappsLis
     // Parse the JSON data
     QJsonDocument document = QJsonDocument::fromJson(jsonData);
     if (document.isNull() || !document.isArray()) {
-        qDebug() << __func__ << "@" << __LINE__ << ": Invalid JSON format.";
+        //////qDebug() << __func__ << "@" << __LINE__ << ": Invalid JSON format.";
         return;
     }
 
@@ -343,7 +385,7 @@ void readServicesList(const QString searchName, QList<VappsListStruct> &VappsLis
         }
     }
 
-    qDebug() << "Services list loaded, total apps found:" << VappsListInfo.size();
+    //////qDebug() << "Services list loaded, total apps found:" << VappsListInfo.size();
 }
 
 void VappsAsync::removeObjectById(const QString &filePath, const QString &idToRemove) {
@@ -374,7 +416,7 @@ void VappsAsync::removeObjectById(const QString &filePath, const QString &idToRe
         if (obj.contains("_id") && obj["_id"].toString() == idToRemove) {
             // Remove the object from the array
             jsonArray.removeAt(i);
-            qDebug() << "Object with _id:" << idToRemove << "removed.";
+            //////qDebug() << "Object with _id:" << idToRemove << "removed.";
             break;
         }
     }
@@ -391,14 +433,14 @@ void VappsAsync::removeObjectById(const QString &filePath, const QString &idToRe
     // Write the updated JSON data to the file
     file.write(updatedJsonDoc.toJson(QJsonDocument::Indented));
     file.close();
-    qDebug() << "Updated JSON file saved.";
+    //////qDebug() << "Updated JSON file saved.";
 }
 
 Q_INVOKABLE void VappsAsync::removeServices(const int index)
 {
-    qDebug() << __func__ << "@" << __LINE__ <<  " : index: " << index;
+    //////qDebug() << __func__ << "@" << __LINE__ <<  " : index: " << index;
     // refresh install app view
-    //initInstalledVappsFromDB();
+    initInstalledVappsFromDB();
     QString mpDataPath = DK_INSTALLED_APPS_FOLDER + "installedapps.json";
     removeObjectById(mpDataPath, installedVappsList[index].id);
 }
@@ -419,42 +461,113 @@ void VappsAsync::handleResults(QString appId, bool isStarted, QString msg)
 
 void VappsAsync::fileChanged(const QString &path)
 {
-    qDebug() << __func__ << "@" << __LINE__ <<  " : path: " << path;
+    //////qDebug() << __func__ << "@" << __LINE__ <<  " : path: " << path;
     QThread::msleep(1000);
     initInstalledVappsFromDB();
 }
 
 void VappsAsync::checkRunningAppSts()
 {    
-    QString appStsLog = DK_INSTALLED_APPS_FOLDER + "checkRunningServicesSts.log";
-    QString cmd = "> " + appStsLog + "; docker ps > " + appStsLog;
-    system(cmd.toUtf8());
+    //////qDebug() << __func__ << __LINE__ << "Starting checkRunningAppSts with folder:" << DK_INSTALLED_APPS_FOLDER;
     
+    // Handle tilde expansion if needed
+    if (DK_INSTALLED_APPS_FOLDER.startsWith("~")) {
+        QString homeDir = QDir::homePath();
+        DK_INSTALLED_APPS_FOLDER.replace(0, 1, homeDir);
+        //////qDebug() << __func__ << __LINE__ << "Expanded path:" << DK_INSTALLED_APPS_FOLDER;
+    }
+    
+    // Make sure the directory exists first
+    QDir appsDir(DK_INSTALLED_APPS_FOLDER);
+    if (!appsDir.exists()) {
+        //////qDebug() << __func__ << __LINE__ << "Creating apps directory:" << DK_INSTALLED_APPS_FOLDER;
+        bool dirCreated = appsDir.mkpath(".");
+        //////qDebug() << __func__ << __LINE__ << "Directory creation result:" << (dirCreated ? "Success" : "Failed");
+    } else {
+        //////qDebug() << __func__ << __LINE__ << "Directory already exists";
+    }
+    
+    // Use the correct log file name that matches the error message
+    QString appStsLog = DK_INSTALLED_APPS_FOLDER + "checkRunningAppSts.log";
+    //////qDebug() << __func__ << __LINE__ << "Log file path:" << appStsLog;
+    
+    // First create parent directories for the log file
+    QFileInfo logFileInfo(appStsLog);
+    QDir logDir = logFileInfo.dir();
+    if (!logDir.exists()) {
+        //////qDebug() << __func__ << __LINE__ << "Creating log directory:" << logDir.path();
+        bool logDirCreated = logDir.mkpath(".");
+        //////qDebug() << __func__ << __LINE__ << "Log directory creation result:" << (logDirCreated ? "Success" : "Failed");
+    }
+    
+    // Try to create an empty log file to ensure it exists
+    {
+        QFile checkFile(appStsLog);
+        if (!checkFile.exists()) {
+            //////qDebug() << __func__ << __LINE__ << "Creating log file";
+            if (checkFile.open(QIODevice::WriteOnly)) {
+                checkFile.write("");
+                checkFile.close();
+                //////qDebug() << __func__ << __LINE__ << "Log file created successfully";
+            } else {
+                qCritical() << __func__ << __LINE__ << "Failed to create log file:" << checkFile.errorString();
+            }
+        } else {
+            //////qDebug() << __func__ << __LINE__ << "Log file already exists";
+        }
+    }
+    
+    // Verify permissions
+    {
+        QFileInfo fileInfo(appStsLog);
+        //////qDebug() << __func__ << __LINE__ << "File permissions:" 
+                //<< "Read:" << fileInfo.isReadable()
+                //<< "Write:" << fileInfo.isWritable()
+                //<< "Exec:" << fileInfo.isExecutable();
+    }
+    
+    // Run the docker ps command
+    QString cmd = "> " + appStsLog + "; docker ps > " + appStsLog;
+    //////qDebug() << __func__ << __LINE__ << "Running command:" << cmd;
+    system(cmd.toUtf8());
+    QThread::msleep(100); // Give some time for the file to be written
+    
+    // Now try to open the file
     QFile logFile(appStsLog);
-    if (!logFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qCritical() << "Failed to open log file: checkRunningServicesSts.log";
+    if (!logFile.exists()) {
+        qCritical() << __func__ << __LINE__ << "Log file does not exist after command execution";
         return;
     }
-
+    
+    if (!logFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCritical() << __func__ << __LINE__ << "Failed to open log file:" << logFile.errorString();
+        return;
+    }
+    
     QTextStream in(&logFile);
     QString content = in.readAll();
-
+    logFile.close();
+    
+    //////qDebug() << __func__ << __LINE__ << "Log file content length:" << content.length();
+    
     if (content.isEmpty()) {
-        qCritical() << "Log file is empty or could not be read.";
+        qCritical() << __func__ << __LINE__ << "Log file is empty";
         return;
     }
-
+    
+    // Continue with processing the content...
     int len = installedVappsList.size();
-    // qDebug() << __func__ << "@" << __LINE__ <<  " : installedVappsList len: " << len;
+    //////qDebug() << __func__ << __LINE__ << "Processing" << len << "installed apps";
+    
     for (int i = 0; i < len; i++) {
         if (!installedVappsList[i].id.isEmpty()) {
             if (content.contains(installedVappsList[i].id)) {
-                // qDebug() << "App ID" << installedVappsList[i].appId << "is running.";
                 updateServicesRunningSts(installedVappsList[i].id, true, i);
             } else {
-                // qDebug() << "App ID" << installedVappsList[i].appId << "is not running.";
                 updateServicesRunningSts(installedVappsList[i].id, false, i);
             }
         }        
     }
+    
+    //////qDebug() << __func__ << __LINE__ << "checkRunningAppSts completed successfully";
 }

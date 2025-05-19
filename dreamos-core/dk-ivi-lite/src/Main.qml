@@ -6,10 +6,8 @@ import QtQuick.Window
 ApplicationWindow {
     id: mainWindow
     visible: true
-    width: Screen.width
-    height: Screen.height
-    visibility: "FullScreen"
-    flags: Qt.Window | Qt.FramelessWindowHint
+    width: 1024
+    height: 768
 
     SwipeView {
         id: swipeView

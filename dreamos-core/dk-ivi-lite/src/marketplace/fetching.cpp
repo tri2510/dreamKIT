@@ -10,14 +10,24 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QTextStream>
+#include <QDir>
 
 extern QString DK_CONTAINER_ROOT;
 
 // Function to write the entire QJsonArray to a file
 void writeJsonArrayToFile(const QJsonArray &data, QString fileName) {
-    // QString fileName = "marketplace_data_installcfg.json";
+    // Ensure the directory exists
+    QFileInfo fileInfo(fileName);
+    QDir directory = fileInfo.dir();
+    if (!directory.exists()) {
+        qDebug() << "Creating directory:" << directory.path();
+        if (!directory.mkpath(".")) {
+            qDebug() << "Error: Failed to create directory:" << directory.path();
+            return;
+        }
+    }
+    
     QFile file(fileName);
-
     if (file.open(QIODevice::WriteOnly)) {
         // Create a JSON document from the QJsonArray
         QJsonDocument doc(data);
@@ -29,16 +39,25 @@ void writeJsonArrayToFile(const QJsonArray &data, QString fileName) {
         file.close();
         qDebug() << "Data written to file:" << fileName;
     } else {
-        qDebug() << "Error: Could not open file for writing:" << fileName;
+        qDebug() << "Error: Could not open file for writing:" << fileName 
+                 << " - Error:" << file.errorString();
     }
 }
 
 // Function to write the JSON object to a file
 void writeToJsonObjectFile(const QJsonObject &item, QString fileName) {
-    // QString id = item["_id"].toString();  // Use _id for the filename
-    // QString fileName = id + "_installcfg.json";
+    // Ensure the directory exists
+    QFileInfo fileInfo(fileName);
+    QDir directory = fileInfo.dir();
+    if (!directory.exists()) {
+        qDebug() << "Creating directory:" << directory.path();
+        if (!directory.mkpath(".")) {
+            qDebug() << "Error: Failed to create directory:" << directory.path();
+            return;
+        }
+    }
+    
     QFile file(fileName);
-
     if (file.open(QIODevice::WriteOnly)) {
         // Create a JSON document from the QJsonObject
         QJsonDocument doc(item);
@@ -50,7 +69,8 @@ void writeToJsonObjectFile(const QJsonObject &item, QString fileName) {
         file.close();
         qDebug() << "Data written to file:" << fileName;
     } else {
-        qDebug() << "Error: Could not open file for writing:" << fileName;
+        qDebug() << "Error: Could not open file for writing:" << fileName 
+                 << " - Error:" << file.errorString();
     }
 }
 
@@ -93,66 +113,30 @@ QString marketplace_login(const QString &login_url, const QString &username, con
 
 // Function to parse and print the data
 void parseMarketplaceData(const QJsonArray &data) {
-    QString marketplaceFolder = DK_CONTAINER_ROOT + "dk_marketplace/";
-    // qDebug() << "--------------------------------------------------";
-    // qDebug() << "Marketplace Data:\n" << data;
-    // qDebug() << "--------------------------------------------------";
+    // Handle tilde expansion
+    QString expandedContainerRoot = DK_CONTAINER_ROOT;
+    if (expandedContainerRoot.startsWith("~")) {
+        QString homeDir = QDir::homePath();
+        expandedContainerRoot.replace(0, 1, homeDir);
+        qDebug() << "Expanded DK_CONTAINER_ROOT from" << DK_CONTAINER_ROOT << "to" << expandedContainerRoot;
+    }
+    
+    QString marketplaceFolder = expandedContainerRoot + "dk_marketplace/";
+    qDebug() << "Using marketplace folder:" << marketplaceFolder;
+    
+    // Ensure directory exists
+    QDir marketplaceDir(marketplaceFolder);
+    if (!marketplaceDir.exists()) {
+        qDebug() << "Creating marketplace directory:" << marketplaceFolder;
+        bool success = marketplaceDir.mkpath(".");
+        qDebug() << "Directory creation result:" << (success ? "Success" : "Failed");
+    }
+    
+    // Write the individual item files
     for (const QJsonValue &value : data) {
         QJsonObject item = value.toObject();
-
-        // qDebug() << "ID:" << item["_id"].toString();
-        // qDebug() << "Name:" << item["name"].toString();
-        // qDebug() << "Category:" << item["category"].toString();
-        // qDebug() << "Thumbnail:" << item["thumbnail"].toString();
-        // qDebug() << "Short Description:" << item["shortDesc"].toString();
-        // qDebug() << "Full Description:" << item["fullDesc"].toString();
-        // qDebug() << "Visibility:" << item["visibility"].toString();
-        // qDebug() << "Created By:" << item["createdBy"].toString();
-        // qDebug() << "State:" << item["state"].toString();
-        // qDebug() << "Created At:" << item["createdAt"].toString();
-        // qDebug() << "Updated At:" << item["updatedAt"].toString();
-
-        // Check if 'dashboardConfig' is present
-        if (item.contains("dashboardConfig")) {
-            // Parse the dashboardConfig if it's a stringified JSON
-            QString rawDashboardConfig = item["dashboardConfig"].toString();
-            
-            if (!rawDashboardConfig.isEmpty()) {
-                QJsonDocument dashboardDoc = QJsonDocument::fromJson(rawDashboardConfig.toUtf8());
-                if (!dashboardDoc.isNull()) {
-                    QJsonObject dashboardConfig = dashboardDoc.object();
-
-                    // qDebug() << "Dashboard Config:";
-                    // qDebug() << "  Docker Image URL:" << dashboardConfig.value("DockerImageURL").toString();
-                    // qDebug() << "  Execution Command:" << dashboardConfig.value("ExecutionCommand").toString();
-                    // qDebug() << "  Execution File URL:" << dashboardConfig.value("ExecutionFileURL").toString();
-                    // qDebug() << "  Execution File Type:" << dashboardConfig.value("ExecutionFileType").toString();
-
-                    // qDebug() << "  Signal List:";
-                    QJsonArray signalList = dashboardConfig.value("SignalList").toArray();
-                    for (const QJsonValue &signalValue : signalList) {
-                        QJsonObject signal = signalValue.toObject();
-                        // qDebug() << "    VSS API:" << signal.value("vss_api").toString();
-                        // qDebug() << "    Type:" << signal.value("vss_type").toString();
-                        // qDebug() << "    Datatype:" << signal.value("datatype").toString();
-                        // qDebug() << "    Description:" << signal.value("description").toString();
-                        // qDebug() << "    VSS to DBC Signal:" << signal.value("vss2dbc_signal").toString();
-                        // qDebug() << "    DBC to VSS Signal:" << signal.value("dbc2vss_signal").toString();
-                    }
-                } else {
-                    qDebug() << "Error: Failed to parse 'dashboardConfig' as a JSON object.";
-                }
-            } else {
-                qDebug() << "Dashboard Config is empty.";
-            }
-        } else {
-            qDebug() << "Dashboard Config: N/A";
-        }
-
-        // Write the current object to a JSON file
         QString filePath = marketplaceFolder + item["_id"].toString() + "_installcfg.json";
         writeToJsonObjectFile(item, filePath);
-        // qDebug() << "--------------------------------------------------";
     }
 
     // Write the entire array to a file

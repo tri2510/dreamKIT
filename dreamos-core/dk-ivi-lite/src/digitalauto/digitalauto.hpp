@@ -79,6 +79,8 @@ private:
     QTimer *m_timer_apprunningcheck;
     int m_deploymentProgressPercent = 0;
     QString m_serialNo;
+    void ensureDirectoriesExist(); // Add this line
+
 };
 
 #endif // DIGITALAUTO_H
