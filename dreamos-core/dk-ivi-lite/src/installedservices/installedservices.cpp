@@ -78,6 +78,49 @@ void InstalledServicesCheckThread::run()
     }
 }
 
+void ensureInstalledServicesDirectoryExists() {
+    // Since DK_INSTALLED_SERVICE_FOLDER might contain a tilde, use shell command first
+    QString mkdirCmd = "mkdir -p " + DK_INSTALLED_SERVICE_FOLDER;
+    qDebug() << __func__ << __LINE__ << "Creating directory with command: " << mkdirCmd;
+    system(mkdirCmd.toUtf8());
+    
+    // Now handle tilde expansion for Qt operations
+    QString expandedFolder = DK_INSTALLED_SERVICE_FOLDER;
+    if (expandedFolder.startsWith("~")) {
+        QString homeDir = QDir::homePath();
+        expandedFolder.replace(0, 1, homeDir);
+        qDebug() << __func__ << __LINE__ << "Expanded path from" << DK_INSTALLED_SERVICE_FOLDER << "to" << expandedFolder;
+        // Update the global variable
+        DK_INSTALLED_SERVICE_FOLDER = expandedFolder;
+    }
+    
+    // Verify with Qt operations
+    QDir serviceDir(DK_INSTALLED_SERVICE_FOLDER);
+    if (!serviceDir.exists()) {
+        qDebug() << __func__ << __LINE__ << "Creating services directory again with Qt:" << serviceDir.absolutePath();
+        bool success = serviceDir.mkpath(".");
+        qDebug() << __func__ << __LINE__ << "Services directory creation " << (success ? "successful" : "FAILED");
+    }
+    
+    // Create default installedservices.json if it doesn't exist
+    QString servicesJsonPath = DK_INSTALLED_SERVICE_FOLDER + "installedservices.json";
+    QFile servicesJsonFile(servicesJsonPath);
+    if (!servicesJsonFile.exists()) {
+        qDebug() << __func__ << __LINE__ << "Creating default installedservices.json file at:" << servicesJsonPath;
+        if (servicesJsonFile.open(QIODevice::WriteOnly)) {
+            // Create an empty JSON array
+            QJsonArray emptyArray;
+            QJsonDocument doc(emptyArray);
+            
+            servicesJsonFile.write(doc.toJson());
+            servicesJsonFile.close();
+            qDebug() << __func__ << __LINE__ << "Default installedservices.json file created successfully";
+        } else {
+            qDebug() << __func__ << __LINE__ << "Failed to create installedservices.json file:" << servicesJsonFile.errorString();
+        }
+    }
+}
+
 ServicesAsync::ServicesAsync()
 {
     if(DK_CONTAINER_ROOT.isEmpty()) {
@@ -87,38 +130,15 @@ ServicesAsync::ServicesAsync()
     // Handle tilde expansion if needed
     if (DK_CONTAINER_ROOT.startsWith("~")) {
         QString homeDir = QDir::homePath();
-        //////qDebug() << __func__ << __LINE__ << "Expanding ~ to home directory:" << homeDir;
+        qDebug() << __func__ << __LINE__ << "Expanding ~ to home directory:" << homeDir;
         DK_CONTAINER_ROOT.replace(0, 1, homeDir);
     }
     
     DK_INSTALLED_SERVICE_FOLDER = DK_CONTAINER_ROOT + "dk_installedservices/";
-    //////qDebug() << __func__ << __LINE__ << "DK_INSTALLED_SERVICE_FOLDER: " << DK_INSTALLED_SERVICE_FOLDER;
+    qDebug() << __func__ << __LINE__ << "DK_INSTALLED_SERVICE_FOLDER: " << DK_INSTALLED_SERVICE_FOLDER;
     
-    // Ensure the directory exists
-    QDir serviceDir(DK_INSTALLED_SERVICE_FOLDER);
-    if (!serviceDir.exists()) {
-        //////qDebug() << __func__ << __LINE__ << "Creating services directory:" << serviceDir.absolutePath();
-        bool success = serviceDir.mkpath(".");
-        //////qDebug() << __func__ << __LINE__ << "Services directory creation " << (success ? "successful" : "FAILED");
-    }
-    
-    // Create default installedservices.json if it doesn't exist
-    QString servicesJsonPath = DK_INSTALLED_SERVICE_FOLDER + "installedservices.json";
-    QFile servicesJsonFile(servicesJsonPath);
-    if (!servicesJsonFile.exists()) {
-        //////qDebug() << __func__ << __LINE__ << "Creating default installedservices.json file";
-        if (servicesJsonFile.open(QIODevice::WriteOnly)) {
-            // Create an empty JSON array
-            QJsonArray emptyArray;
-            QJsonDocument doc(emptyArray);
-            
-            servicesJsonFile.write(doc.toJson());
-            servicesJsonFile.close();
-            //////qDebug() << __func__ << __LINE__ << "Default installedservices.json file created";
-        } else {
-            //////qDebug() << __func__ << __LINE__ << "Failed to create installedservices.json file";
-        }
-    }
+    // Ensure all directories exist and the JSON file is created
+    ensureInstalledServicesDirectoryExists();
 
     m_workerThread = new InstalledServicesCheckThread(this);
     connect(m_workerThread, &InstalledServicesCheckThread::resultReady, this, &ServicesAsync::handleResults);
