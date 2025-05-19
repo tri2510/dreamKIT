@@ -1,0 +1,1 @@
+docker build -t autowrx/dk_appinstallservice:latest --file Dockerfile . --build-arg HTTP_PROXY=http://127.0.0.1:3128   --build-arg HTTPS_PROXY=http://127.0.0.1:3128   --build-arg http_proxy=http://127.0.0.1:3128   --build-arg https_proxy=http://127.0.0.1:3128   --network=host
