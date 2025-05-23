@@ -1,0 +1,26 @@
+version: "3.8"
+services:
+  dk-ivi-lite:
+    build:
+      context: ./dreamos-core/dk-ivi-lite
+      dockerfile: Dockerfile
+    volumes:
+      - ./dreamos-core/dk-ivi-lite:/workspace
+    ports:
+      - "3000:3000"
+  dk_appinstallservice:
+    build:
+      context: ./dreamos-core/dk_appinstallservice
+      dockerfile: Dockerfile
+    volumes:
+      - ./dreamos-core/dk_appinstallservice:/workspace
+    ports:
+      - "4000:4000"
+  dk-manager:
+    build:
+      context: ./dreamos-core/dk-manager
+      dockerfile: Dockerfile
+    volumes:
+      - ./dreamos-core/dk-manager:/workspace
+    ports:
+      - "5000:5000"
