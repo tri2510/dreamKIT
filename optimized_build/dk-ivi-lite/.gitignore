@@ -1,0 +1,8 @@
+# Ignore build directory
+/build
+
+# Ignore output directory
+/output
+
+# Ignore all .cfg files in the root
+/*.conf
