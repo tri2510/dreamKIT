@@ -21,6 +21,7 @@ QString DK_VCU_USERNAME = "sdv";
 QString DK_ARCH = "arm64";
 QString DK_DOCKER_HUB_NAMESPACE = "";
 QString DK_CONTAINER_ROOT       = "";
+QString DK_VIP = "true";
 
 QString DK_MGR_DIR              = DK_CONTAINER_ROOT + "dk_manager/";
 QString digitalautoDeployFolder = DK_MGR_DIR + "prototypes/";

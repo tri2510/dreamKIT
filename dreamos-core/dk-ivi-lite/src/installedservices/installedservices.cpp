@@ -13,8 +13,93 @@ extern QString DK_VCU_USERNAME;
 extern QString DK_ARCH;
 extern QString DK_DOCKER_HUB_NAMESPACE;
 extern QString DK_CONTAINER_ROOT;
+extern QString DK_VIP;
+
+QString DK_VIP_PWD;
+QString DK_VIP_USER;
+QString DK_VIP_IP;
+QString DK_XIP_IP;
 
 QString DK_INSTALLED_SERVICE_FOLDER = "";
+
+CheckAppRunningThread::CheckAppRunningThread(ServicesAsync *parent)
+{
+    QString mpDataPath = DK_INSTALLED_SERVICE_FOLDER + "installedservices.json";
+
+    m_serviceAsync = parent;
+}
+
+void CheckAppRunningThread::run()
+{
+    while(1) {
+        if (isVipReachable()) {
+            m_serviceAsync->m_is_vip_connected = true;
+        }
+        else {
+            m_serviceAsync->m_is_vip_connected = false;
+        }
+        checkRunningAppSts();
+    }
+}
+
+bool CheckAppRunningThread::isVipReachable() {
+    if (DK_VIP == "true") {
+        // Construct ping command - send 1 packet with timeout 1 second
+        QString cmd = "ping -c 2 -W 1 " + DK_VIP_IP + " > /dev/null 2>&1";
+
+        // system() returns 0 if the command succeeded (host reachable)
+        int ret = system(cmd.toUtf8());;
+
+        return (ret == 0);
+    }
+    else {
+        return false;
+    }
+}
+
+void CheckAppRunningThread::checkRunningAppSts()
+{    
+    QString appStsLog =  "/tmp/vservice_checkRunningServicesSts.log";
+    QString cmd = "> " + appStsLog + "; docker ps > " + appStsLog;
+    if (m_serviceAsync->m_is_vip_connected && m_serviceAsync->m_is_vip_service_installed) {
+        cmd = "(> " + appStsLog + "; docker ps ; ";  
+        cmd += "sshpass -p '" + DK_VIP_PWD + "' ssh -o StrictHostKeyChecking=no " + DK_VIP_USER + "@" + DK_VIP_IP + " 'docker ps' ) > ";
+        cmd += appStsLog;
+        // cmd += " & ";
+    }
+    system(cmd.toUtf8());
+
+    // qDebug() << "checkRunningAppSts cmd: " << cmd;
+    
+    QThread::msleep(500);
+    QFile logFile(appStsLog);
+    if (!logFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCritical() << "Failed to open log file: checkRunningServicesSts.log";
+        return;
+    }
+
+    QTextStream in(&logFile);
+    QString content = in.readAll();
+
+    if (content.isEmpty()) {
+        qCritical() << "Log file is empty or could not be read.";
+        return;
+    }
+
+    int len = m_serviceAsync->installedServicesList.size();
+    // qDebug() << __func__ << "@" << __LINE__ <<  " : installedServicesList len: " << len;
+    for (int i = 0; i < len; i++) {
+        if (!m_serviceAsync->installedServicesList[i].id.isEmpty()) {
+            if (content.contains(m_serviceAsync->installedServicesList[i].id)) {
+                // qDebug() << "App ID" << installedServicesList[i].appId << "is running.";
+                m_serviceAsync->updateServicesRunningSts(m_serviceAsync->installedServicesList[i].id, true, i);
+            } else {
+                // qDebug() << "App ID" << installedServicesList[i].appId << "is not running.";
+                m_serviceAsync->updateServicesRunningSts(m_serviceAsync->installedServicesList[i].id, false, i);
+            }
+        }        
+    }
+}
 
 InstalledServicesCheckThread::InstalledServicesCheckThread(ServicesAsync *parent)
 {
@@ -51,6 +136,11 @@ void InstalledServicesCheckThread::run()
         if (m_istriggeredAppStart && !m_appId.isEmpty() && !m_appName.isEmpty()) {
             QThread::msleep(5000); // workaround: wait 2s for the app to start. TODO: consider to check if the start time is more than 2s
             cmd = "docker ps > " + dockerps;
+            if (m_serviceAsync->m_is_vip_connected && m_serviceAsync->m_is_vip_service_installed) {
+                cmd = "(docker ps ; ";
+                cmd += "sshpass -p '" + DK_VIP_PWD + "' ssh -o StrictHostKeyChecking=no " + DK_VIP_USER + "@" + DK_VIP_IP + " 'docker ps' ) > ";
+                cmd += dockerps;
+            }
             system(cmd.toUtf8()); 
             QThread::msleep(10);
             QFile MyFile(dockerps);
@@ -81,17 +171,68 @@ ServicesAsync::ServicesAsync()
     if(DK_CONTAINER_ROOT.isEmpty()) {
         DK_CONTAINER_ROOT = qgetenv("DK_CONTAINER_ROOT");
     }
+
+    DK_VIP = qgetenv("DK_VIP");
+    
     DK_INSTALLED_SERVICE_FOLDER = DK_CONTAINER_ROOT + "dk_installedservices/";
     qDebug() << __func__ << "@" << __LINE__ <<  " : DK_INSTALLED_SERVICE_FOLDER: " << DK_INSTALLED_SERVICE_FOLDER;
+
+    parseSystemCfg();
 
     m_workerThread = new InstalledServicesCheckThread(this);
     connect(m_workerThread, &InstalledServicesCheckThread::resultReady, this, &ServicesAsync::handleResults);
     connect(m_workerThread, &InstalledServicesCheckThread::finished, m_workerThread, &QObject::deleteLater);
     m_workerThread->start();
 
-    m_timer_apprunningcheck = new QTimer(this);
-    connect(m_timer_apprunningcheck, SIGNAL(timeout()), this, SLOT(checkRunningAppSts()));
-    m_timer_apprunningcheck->start(3000);
+    m_checkAppRunningThread = new CheckAppRunningThread(this);
+    m_checkAppRunningThread->start();
+}
+
+void ServicesAsync::parseSystemCfg()
+{
+    QString path = DK_CONTAINER_ROOT + "dk_manager/dk_system_cfg.json";
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "Cannot open file:" << path;
+        return;
+    }
+
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    // Parse JSON
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        qWarning() << "JSON parse error:" << parseError.errorString();
+        return;
+    }
+
+    if (!doc.isObject()) {
+        qWarning() << "JSON is not an object";
+        return;
+    }
+
+    QJsonObject rootObj = doc.object();
+
+    // Parse "xip" object
+    if (rootObj.contains("xip") && rootObj["xip"].isObject()) {
+        QJsonObject xipObj = rootObj["xip"].toObject();
+        DK_XIP_IP = xipObj.value("ip").toString();
+    }
+    qDebug() << "DK_XIP_IP: " << DK_XIP_IP;
+
+    // Parse "vip" object
+    if (rootObj.contains("vip") && rootObj["vip"].isObject()) {
+        QJsonObject vipObj = rootObj["vip"].toObject();
+        DK_VIP_IP = vipObj.value("ip").toString();
+        DK_VIP_USER = vipObj.value("user").toString();
+        DK_VIP_PWD = vipObj.value("pwd").toString();
+    }
+    qDebug() << "DK_VIP_IP: " << DK_VIP_IP;
+    qDebug() << "DK_VIP_USER: " << DK_VIP_USER;
+    qDebug() << "DK_VIP_PWD: " << DK_VIP_PWD;
 }
 
 Q_INVOKABLE void ServicesAsync::openAppEditor(int idx)
@@ -115,6 +256,7 @@ Q_INVOKABLE void ServicesAsync::openAppEditor(int idx)
 Q_INVOKABLE void ServicesAsync::initInstalledServicesFromDB()
 {
     installedServicesMutex.lock();
+    m_is_vip_service_installed = false;
 
     clearServicesListView();
     installedServicesList.clear();
@@ -158,14 +300,22 @@ Q_INVOKABLE void ServicesAsync::initInstalledServicesFromDB()
         appInfo.name = jsonObject["name"].toString();
 
         // Extract author from 'createdBy' object
-        QJsonObject createdBy = jsonObject["createdBy"].toObject();
-        if (createdBy.contains("descriptor")) {
-            QJsonDocument descriptorDoc = QJsonDocument::fromJson(createdBy["descriptor"].toString().toUtf8());
-            QJsonObject descriptorObj = descriptorDoc.object();
-            appInfo.author = descriptorObj["name"].toString();
-        } else if (createdBy.contains("fullName")) {
-            appInfo.author = createdBy["fullName"].toString();
-        } else {
+        // QJsonObject createdBy = jsonObject["createdBy"].toObject();
+        // if (createdBy.contains("descriptor")) {
+        //     QJsonDocument descriptorDoc = QJsonDocument::fromJson(createdBy["descriptor"].toString().toUtf8());
+        //     QJsonObject descriptorObj = descriptorDoc.object();
+        //     appInfo.author = descriptorObj["name"].toString();
+        // } else if (createdBy.contains("fullName")) {
+        //     appInfo.author = createdBy["fullName"].toString();
+        // } else {
+        //     appInfo.author = "Unknown";
+        // }
+        
+        QJsonObject storeId = jsonObject["storeId"].toObject();
+        if (storeId.contains("name")) {
+            appInfo.author = storeId["name"].toString();
+        } 
+        else {
             appInfo.author = "Unknown";
         }
 
@@ -194,6 +344,16 @@ Q_INVOKABLE void ServicesAsync::initInstalledServicesFromDB()
             } else {
                 appInfo.packagelink = "N/A";
             }
+
+            if (dashboardObj.contains("Target")) {
+                appInfo.deploytarget = dashboardObj["Target"].toString();
+            } else {
+                appInfo.deploytarget = "xip";
+            }
+            if (appInfo.deploytarget == "vip") {
+                m_is_vip_service_installed = true;
+            }
+
         } else {
             appInfo.packagelink = "N/A";
         }
@@ -224,25 +384,8 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
 {
     QString dockerps = DK_INSTALLED_SERVICE_FOLDER + "listservicescmd.log";
     QString cmd = "";
-    if (isSubscribed) {
-        {
-            cmd = "docker ps > " + dockerps;
-            system(cmd.toUtf8());            
-            QThread::msleep(100);
-            QFile MyFile(dockerps);
-            MyFile.open(QIODevice::ReadWrite);
-            QTextStream in (&MyFile);
-            if (in.readAll().contains(appId, Qt::CaseSensitivity::CaseSensitive)) {
-                qDebug() << appId << " is already open";
-                cmd = "> " + dockerps;
-                system(cmd.toUtf8()); 
-                return;
-            }
-            cmd = "> " + dockerps;
-            system(cmd.toUtf8()); 
-        }
 
-        // QString cmd;
+    if (isSubscribed) {
         cmd = "";
 
         QString dbc_default_path_mount = " -v /home/" + DK_VCU_USERNAME + "/.dk/dk_manager/vssmapping/dbc_default_values.json:/app/vss/dbc_default_values.json:ro ";
@@ -252,19 +395,35 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
         QString safeParams = getSafeDockerParam(runtimecfgfile);
         QString audioParams = getAudioParam(runtimecfgfile);
 
-        // start service
-        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v /home/" + DK_VCU_USERNAME + "/.dk/dk_installedservices/" + appId + ":/app/runtime --network host " + dbc_default_path_mount + dbc_vss_mount + safeParams + audioParams + installedServicesList[appIdx].packagelink;
-        qDebug() << cmd;
-        system(cmd.toUtf8());
+        if (installedServicesList[appIdx].deploytarget == "vip") {
+            if (m_is_vip_connected) {
+                // "sshpass -p {DK_VIP_PWD} ssh -o StrictHostKeyChecking=no {DK_VIP_USER}@{DK_VIP_IP} 'docker pull {DK_XIP_IP}:5000/{DockerImageURL}'"
+                // docker kill dk_vrte ; docker rm dk_vrte ; docker run  --name dk_vrte --network host --privileged -it phongbosch/dk_vrte:latest
+                // start service
+                cmd += "sshpass -p '" + DK_VIP_PWD + "' ssh -o StrictHostKeyChecking=no " + DK_VIP_USER + "@" + DK_VIP_IP + " 'docker kill " + appId +  ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 --network host  --privileged -v /home/.dk/dk_fota:/home/.dk/dk_fota:ro -v /home/.dk/dk_vss:/home/.dk/dk_vss:ro -v /home/.dk/dk_installedservices/" +     appId + ":/app/runtime " + DK_XIP_IP + ":5000/" + installedServicesList[appIdx].packagelink + " '";
+                qDebug() << cmd;
+                system(cmd.toUtf8());
+            }
+            else {
+                qDebug() << "VIP is not connected. Cannot start the service.";
+            }
+        }
+        else {
+            // start service
+            cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3    -v /home/" + DK_VCU_USERNAME + "/.dk/dk_installedservices/" + appId + ":/app/runtime --network host " + dbc_default_path_mount + dbc_vss_mount     + safeParams + audioParams + installedServicesList[appIdx].packagelink;
+            qDebug() << cmd;
+            system(cmd.toUtf8());
+        }
 
         if (m_workerThread) {
             m_workerThread->triggerCheckAppStart(appId, name);
         }
     }
     else {
-        QString cmd;
-        cmd += "docker kill " + appId + " &";
-        // cmd += "docker kill " + appId;
+        cmd = "docker kill " + appId + " &";
+        if (installedServicesList[appIdx].deploytarget == "vip") {
+            cmd = "sshpass -p '" + DK_VIP_PWD + "' ssh -o StrictHostKeyChecking=no " + DK_VIP_USER + "@" + DK_VIP_IP + " 'docker kill " + appId + " '";
+        }
         qDebug() << cmd;
         system(cmd.toUtf8());
     }
@@ -402,6 +561,20 @@ Q_INVOKABLE void ServicesAsync::removeServices(const int index)
     //initInstalledServicesFromDB();
     QString mpDataPath = DK_INSTALLED_SERVICE_FOLDER + "installedservices.json";
     removeObjectById(mpDataPath, installedServicesList[index].id);
+
+    QString cmd;
+    QString appId = installedServicesList[index].id;
+    // delete service
+    if (installedServicesList[index].deploytarget == "vip") {
+        cmd = "sshpass -p '" + DK_VIP_PWD + "' ssh -o StrictHostKeyChecking=no " + DK_VIP_USER + "@" + DK_VIP_IP + " 'docker kill " + appId + ";docker rm " + appId + "'";
+        qDebug() << cmd;
+        system(cmd.toUtf8());
+    }
+    else {
+        cmd = "docker kill " + appId + ";docker rm " + appId;
+        qDebug() << cmd;
+        system(cmd.toUtf8());
+    }
 }
 
 void ServicesAsync::handleResults(QString appId, bool isStarted, QString msg)
@@ -423,39 +596,4 @@ void ServicesAsync::fileChanged(const QString &path)
     qDebug() << __func__ << "@" << __LINE__ <<  " : path: " << path;
     QThread::msleep(1000);
     initInstalledServicesFromDB();
-}
-
-void ServicesAsync::checkRunningAppSts()
-{    
-    QString appStsLog = DK_INSTALLED_SERVICE_FOLDER + "checkRunningServicesSts.log";
-    QString cmd = "> " + appStsLog + "; docker ps > " + appStsLog;
-    system(cmd.toUtf8());
-    
-    QFile logFile(appStsLog);
-    if (!logFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qCritical() << "Failed to open log file: checkRunningServicesSts.log";
-        return;
-    }
-
-    QTextStream in(&logFile);
-    QString content = in.readAll();
-
-    if (content.isEmpty()) {
-        qCritical() << "Log file is empty or could not be read.";
-        return;
-    }
-
-    int len = installedServicesList.size();
-    // qDebug() << __func__ << "@" << __LINE__ <<  " : installedServicesList len: " << len;
-    for (int i = 0; i < len; i++) {
-        if (!installedServicesList[i].id.isEmpty()) {
-            if (content.contains(installedServicesList[i].id)) {
-                // qDebug() << "App ID" << installedServicesList[i].appId << "is running.";
-                updateServicesRunningSts(installedServicesList[i].id, true, i);
-            } else {
-                // qDebug() << "App ID" << installedServicesList[i].appId << "is not running.";
-                updateServicesRunningSts(installedServicesList[i].id, false, i);
-            }
-        }        
-    }
 }

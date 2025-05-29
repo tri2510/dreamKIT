@@ -159,14 +159,22 @@ Q_INVOKABLE void VappsAsync::initInstalledVappsFromDB()
         appInfo.name = jsonObject["name"].toString();
 
         // Extract author from 'createdBy' object
-        QJsonObject createdBy = jsonObject["createdBy"].toObject();
-        if (createdBy.contains("descriptor")) {
-            QJsonDocument descriptorDoc = QJsonDocument::fromJson(createdBy["descriptor"].toString().toUtf8());
-            QJsonObject descriptorObj = descriptorDoc.object();
-            appInfo.author = descriptorObj["name"].toString();
-        } else if (createdBy.contains("fullName")) {
-            appInfo.author = createdBy["fullName"].toString();
-        } else {
+        // QJsonObject createdBy = jsonObject["createdBy"].toObject();
+        // if (createdBy.contains("descriptor")) {
+        //     QJsonDocument descriptorDoc = QJsonDocument::fromJson(createdBy["descriptor"].toString().toUtf8());
+        //     QJsonObject descriptorObj = descriptorDoc.object();
+        //     appInfo.author = descriptorObj["name"].toString();
+        // } else if (createdBy.contains("fullName")) {
+        //     appInfo.author = createdBy["fullName"].toString();
+        // } else {
+        //     appInfo.author = "Unknown";
+        // }
+
+        QJsonObject storeId = jsonObject["storeId"].toObject();
+        if (storeId.contains("name")) {
+            appInfo.author = storeId["name"].toString();
+        } 
+        else {
             appInfo.author = "Unknown";
         }
 
@@ -401,6 +409,12 @@ Q_INVOKABLE void VappsAsync::removeServices(const int index)
     //initInstalledVappsFromDB();
     QString mpDataPath = DK_INSTALLED_APPS_FOLDER + "installedapps.json";
     removeObjectById(mpDataPath, installedVappsList[index].id);
+
+    QString cmd;
+    QString appId = installedVappsList[index].id;
+    cmd = "docker kill " + appId + ";docker rm " + appId;
+    qDebug() << cmd;
+    system(cmd.toUtf8());
 }
 
 void VappsAsync::handleResults(QString appId, bool isStarted, QString msg)

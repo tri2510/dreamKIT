@@ -260,7 +260,8 @@ def main():
     
     print('-' * 50)
     # pull the app/service
-    cmd = f"docker pull {DockerImageURL};docker image prune -f;"
+    cmd = f"docker pull {DockerImageURL}"
+    print(f"cmd: {cmd}")
     if (DeployTarget == "vip"):
         cmd = f"docker pull --platform {TargetPlatform} {DockerImageURL}"
     result = cmd_execute(cmd)
@@ -268,6 +269,8 @@ def main():
         print(f"Error: can't pull the docker image {DockerImageURL}")
         return
     else:
+        cmd = f"docker image prune -f"
+        cmd_execute(cmd)
         print("Successfully download the app/service")
         if (DeployTarget == "vip"):
             # store image into local registry
@@ -281,10 +284,13 @@ def main():
                 print(f"Error: can't execute {cmd}")
 
             # vip pull image from xip host registry
-            cmd = f"sshpass -p '{DK_VIP_PWD}' ssh -o StrictHostKeyChecking=no {DK_VIP_USER}@{DK_VIP_IP} 'docker pull {DK_XIP_IP}:5000/{DockerImageURL} ; mkdir -p /home/.dk/dk_installedservices;docker image prune -f;'"
+            cmd = f"sshpass -p '{DK_VIP_PWD}' ssh -o StrictHostKeyChecking=no {DK_VIP_USER}@{DK_VIP_IP} 'docker pull {DK_XIP_IP}:5000/{DockerImageURL} ; mkdir -p ~/.dk/dk_installedservices'"
             result = cmd_execute(cmd)
             if result == False:
                 print(f"Error: can't execute {cmd}")
+                return
+            cmd = f"sshpass -p '{DK_VIP_PWD}' ssh -o StrictHostKeyChecking=no {DK_VIP_USER}@{DK_VIP_IP} 'docker image prune -f'"
+            cmd_execute(cmd)
 
     print('-' * 50)
     # Check if 'RuntimeCfg' exists
@@ -485,7 +491,7 @@ def main():
             print(f"Error: can't execute {cmd}")
 
         # copy runtime folder to target
-        cmd = f"sshpass -p '{DK_VIP_PWD}' scp -o StrictHostKeyChecking=no -r {appFolder} {DK_VIP_USER}@{DK_VIP_IP}:/home/.dk/dk_installedservices/"
+        cmd = f"sshpass -p '{DK_VIP_PWD}' scp -o StrictHostKeyChecking=no -r {appFolder} {DK_VIP_USER}@{DK_VIP_IP}:~/.dk/dk_installedservices"
         result = cmd_execute(cmd)
         if result == False:
             print(f"Error: can't execute {cmd}")

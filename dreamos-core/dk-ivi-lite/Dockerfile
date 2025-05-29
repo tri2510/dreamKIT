@@ -52,6 +52,7 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     qml6-module-qtqml \
     qml6-module-qtqml-statemachine \
+    iputils-ping sshpass \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/build/dk_ivi /app/exec/
