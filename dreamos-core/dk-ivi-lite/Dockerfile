@@ -1,7 +1,7 @@
 # ========================
 # Builder stage
 # ========================
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:22.04 AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN mkdir /app/build && cd /app/build && \
 # ========================
 # Runtime stage
 # ========================
-FROM ubuntu:24.04
+FROM ubuntu:22.04
 
 ARG TARGETARCH
 
