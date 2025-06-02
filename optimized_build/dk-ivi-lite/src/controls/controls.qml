@@ -23,29 +23,15 @@ Rectangle {
         onUpdateWidget_lightCtr_Hazard: (sts) => {
             hazardBtn.checked = sts
         }
-        onUpdateWidget_lightCtr_ambient_mode: (mode) => {
-            ambientControl.mode = mode
-        }
-        onUpdateWidget_lightCtr_ambient_intensity: (intensity) => {
-            intensitySlider.value = intensity
-        }
-        onUpdateWidget_gear_mode: (mode) => {
-            gearButtons.selectGear(mode) 
-        }
-        onUpdateWidget_door_driverSide_isOpen: (sts) => {
-            doorLeftBtn.checked = sts
-        }
-        onUpdateWidget_door_passengerSide_isOpen: (sts) => {
-            doorRightBtn.checked = sts
-        }
-        onUpdateWidget_trunk_rear_isOpen: (sts) => {
-            trunkBtn.checked = sts
-        }
         onUpdateWidget_hvac_driverSide_FanSpeed: (speed) => {
-            fanSpeedLeft.mode = speed
+            // Convert 0-10 range to 0-100 percentage
+            fanSlider.value = speed * 10
         }
         onUpdateWidget_hvac_passengerSide_FanSpeed: (speed) => {
-            fanSpeedRight.mode = speed
+            // Use driver side as master for unified control
+        }
+        onUpdateWidget_seat_driverSide_position: (position) => {
+            seatLevels.currentLevel = position
         }
     }
 
@@ -53,641 +39,759 @@ Rectangle {
         controlPageAsync.init()
     }
 
-    ScrollView {
+    // Main container
+    Item {
         anchors.fill: parent
         anchors.margins: 24
-        clip: true
 
+        // Header
+        Text {
+            id: headerText
+            text: "Vehicle Control Center"
+            font.pixelSize: 28
+            font.family: "Segoe UI"
+            font.weight: Font.Bold
+            color: "#00D4AA"
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 20
+        }
+
+        // Main controls container
         Item {
-            width: rectangle.width - 48
-            height: Math.max(rectangle.height - 48, 800)
+            id: controlsContainer
+            width: Math.min(parent.width, 1000)
+            height: 600
+            y: 80
+            anchors.horizontalCenter: parent.horizontalCenter
 
-            // Header
-            Text {
-                id: headerText
-                text: "Vehicle Control Center"
-                font.pixelSize: 28
-                font.family: "Segoe UI"
-                font.weight: Font.Bold
-                color: "#00D4AA"
-                anchors.horizontalCenter: parent.horizontalCenter
-                y: 20
+            // Car illustration (centered)
+            Item {
+                id: carIllustration
+                width: 240
+                height: 480
+                anchors.centerIn: parent
+
+                // Background car image
+                Image {
+                    id: carImage
+                    source: "qrc:/untitled2/resource/icons/car.png"
+                    width: 200
+                    height: 400
+                    anchors.centerIn: parent
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+
+                // Enhanced headlight overlays with glow effects
+                Rectangle {
+                    id: leftHeadlight
+                    width: 20
+                    height: 14
+                    radius: 7
+                    color: lowbeamBtn.checked || highbeamBtn.checked ? "#FFD700" : "transparent"
+                    border.color: lowbeamBtn.checked || highbeamBtn.checked ? "#FFD700" : "#404040"
+                    border.width: 1
+                    x: 58  // Left side of car front
+                    y: 38  // Near front of car
+                    
+                    Behavior on color { ColorAnimation { duration: 300 } }
+                    
+                    // Inner glow for active state
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width - 4
+                        height: parent.height - 4
+                        radius: parent.radius - 2
+                        color: lowbeamBtn.checked || highbeamBtn.checked ? "#FFFFFF" : "transparent"
+                        opacity: 0.7
+                        
+                        Behavior on color { ColorAnimation { duration: 300 } }
+                    }
+                    
+                    // High beam outer glow
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width + 12
+                        height: parent.height + 12
+                        radius: parent.radius + 6
+                        color: "transparent"
+                        border.color: "#FFD700"
+                        border.width: highbeamBtn.checked ? 3 : 0
+                        opacity: 0.4
+                        
+                        Behavior on border.width { NumberAnimation { duration: 300 } }
+                        
+                        // Pulsing animation for high beam
+                        SequentialAnimation on opacity {
+                            running: highbeamBtn.checked
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.2; duration: 800 }
+                            NumberAnimation { to: 0.6; duration: 800 }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: rightHeadlight
+                    width: 20
+                    height: 14
+                    radius: 7
+                    color: lowbeamBtn.checked || highbeamBtn.checked ? "#FFD700" : "transparent"
+                    border.color: lowbeamBtn.checked || highbeamBtn.checked ? "#FFD700" : "#404040"
+                    border.width: 1
+                    x: 162  // Right side of car front
+                    y: 38   // Near front of car
+                    
+                    Behavior on color { ColorAnimation { duration: 300 } }
+                    
+                    // Inner glow for active state
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width - 4
+                        height: parent.height - 4
+                        radius: parent.radius - 2
+                        color: lowbeamBtn.checked || highbeamBtn.checked ? "#FFFFFF" : "transparent"
+                        opacity: 0.7
+                        
+                        Behavior on color { ColorAnimation { duration: 300 } }
+                    }
+                    
+                    // High beam outer glow
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width + 12
+                        height: parent.height + 12
+                        radius: parent.radius + 6
+                        color: "transparent"
+                        border.color: "#FFD700"
+                        border.width: highbeamBtn.checked ? 3 : 0
+                        opacity: 0.4
+                        
+                        Behavior on border.width { NumberAnimation { duration: 300 } }
+                        
+                        // Pulsing animation for high beam
+                        SequentialAnimation on opacity {
+                            running: highbeamBtn.checked
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.2; duration: 800 }
+                            NumberAnimation { to: 0.6; duration: 800 }
+                        }
+                    }
+                }
+
+                // Enhanced hazard lights with modern styling
+                Rectangle {
+                    id: leftHazard
+                    width: 16
+                    height: 12
+                    radius: 6
+                    color: hazardBtn.checked ? "#FF4444" : "transparent"
+                    border.color: hazardBtn.checked ? "#FF4444" : "#404040"
+                    border.width: 1
+                    x: 38   // Left side
+                    y: 118  // Mid-car position
+                    
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                    
+                    // Inner bright core
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 8
+                        height: 6
+                        radius: 3
+                        color: hazardBtn.checked ? "#FFFFFF" : "transparent"
+                        opacity: 0.9
+                    }
+                    
+                    // Outer glow ring
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width + 8
+                        height: parent.height + 8
+                        radius: parent.radius + 4
+                        color: "transparent"
+                        border.color: "#FF4444"
+                        border.width: hazardBtn.checked ? 2 : 0
+                        opacity: 0.5
+                        
+                        Behavior on border.width { NumberAnimation { duration: 200 } }
+                    }
+                    
+                    SequentialAnimation on opacity {
+                        running: hazardBtn.checked
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.3; duration: 600 }
+                        NumberAnimation { to: 1.0; duration: 600 }
+                    }
+                }
+
+                Rectangle {
+                    id: rightHazard
+                    width: 16
+                    height: 12
+                    radius: 6
+                    color: hazardBtn.checked ? "#FF4444" : "transparent"
+                    border.color: hazardBtn.checked ? "#FF4444" : "#404040"
+                    border.width: 1
+                    x: 186  // Right side
+                    y: 118  // Mid-car position
+                    
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                    
+                    // Inner bright core
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 8
+                        height: 6
+                        radius: 3
+                        color: hazardBtn.checked ? "#FFFFFF" : "transparent"
+                        opacity: 0.9
+                    }
+                    
+                    // Outer glow ring
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width + 8
+                        height: parent.height + 8
+                        radius: parent.radius + 4
+                        color: "transparent"
+                        border.color: "#FF4444"
+                        border.width: hazardBtn.checked ? 2 : 0
+                        opacity: 0.5
+                        
+                        Behavior on border.width { NumberAnimation { duration: 200 } }
+                    }
+                    
+                    SequentialAnimation on opacity {
+                        running: hazardBtn.checked
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.3; duration: 600 }
+                        NumberAnimation { to: 1.0; duration: 600 }
+                    }
+                }
+
+                // Enhanced rear hazard lights
+                Rectangle {
+                    width: 14
+                    height: 10
+                    radius: 5
+                    color: hazardBtn.checked ? "#FF4444" : "transparent"
+                    border.color: hazardBtn.checked ? "#FF4444" : "#404040"
+                    border.width: 1
+                    x: 63   // Left rear
+                    y: 348  // Back of car
+                    
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                    
+                    // Inner core
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 6
+                        height: 4
+                        radius: 2
+                        color: hazardBtn.checked ? "#FFFFFF" : "transparent"
+                        opacity: 0.8
+                    }
+                    
+                    SequentialAnimation on opacity {
+                        running: hazardBtn.checked
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.2; duration: 600 }
+                        NumberAnimation { to: 1.0; duration: 600 }
+                    }
+                }
+
+                Rectangle {
+                    width: 14
+                    height: 10
+                    radius: 5
+                    color: hazardBtn.checked ? "#FF4444" : "transparent"
+                    border.color: hazardBtn.checked ? "#FF4444" : "#404040"
+                    border.width: 1
+                    x: 163  // Right rear
+                    y: 348  // Back of car
+                    
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                    
+                    // Inner core
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 6
+                        height: 4
+                        radius: 2
+                        color: hazardBtn.checked ? "#FFFFFF" : "transparent"
+                        opacity: 0.8
+                    }
+                    
+                    SequentialAnimation on opacity {
+                        running: hazardBtn.checked
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.2; duration: 600 }
+                        NumberAnimation { to: 1.0; duration: 600 }
+                    }
+                }
+
+                // Elegant seat activity indicator
+                Rectangle {
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: seatLevels.currentLevel > 0 ? "#00D4AA" : "transparent"
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: 185  // Front seat area
+                    opacity: seatLevels.currentLevel > 0 ? 1.0 : 0.0
+                    
+                    Behavior on opacity { NumberAnimation { duration: 300 } }
+                    Behavior on color { ColorAnimation { duration: 300 } }
+                    
+                    // Subtle pulsing when active
+                    SequentialAnimation on scale {
+                        running: seatLevels.currentLevel > 0
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 1.3; duration: 1200 }
+                        NumberAnimation { to: 1.0; duration: 1200 }
+                    }
+                }
+
+                // Ambient lighting strip (elegant accent)
+                Rectangle {
+                    width: 120
+                    height: 3
+                    radius: 1.5
+                    color: (lowbeamBtn.checked || highbeamBtn.checked || hazardBtn.checked || seatLevels.currentLevel > 0) ? "#00D4AA" : "transparent"
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: 320  // Lower part of car
+                    opacity: 0.6
+                    
+                    Behavior on color { ColorAnimation { duration: 500 } }
+                    
+                    // Gradient effect simulation
+                    Rectangle {
+                        width: parent.width * 0.6
+                        height: parent.height
+                        radius: parent.radius
+                        anchors.centerIn: parent
+                        color: "#FFFFFF"
+                        opacity: 0.3
+                    }
+                }
             }
 
-            // Main car illustration and controls container
+            // Left control panel - Lighting
             Rectangle {
-                id: carContainer
-                width: parent.width
-                height: 600
-                y: 80
-                color: "transparent"
+                id: leftPanel
+                width: 240
+                height: 450
+                x: 0
+                y: 75
+                color: "#1A1A1A"
+                radius: 16
+                border.color: "#2A2A2A"
+                border.width: 1
 
-                // Car SVG illustration (simplified top-down view)
-                Item {
-                    id: carIllustration
-                    width: 300
-                    height: 500
-                    anchors.centerIn: parent
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 20
+                    spacing: 20
 
-                    // Car body
-                    Rectangle {
-                        id: carBody
-                        width: 200
-                        height: 400
-                        radius: 60
-                        color: "#1A1A1A"
-                        border.color: "#00D4AA"
-                        border.width: 3
-                        anchors.centerIn: parent
-
-                        // Windshield
-                        Rectangle {
-                            width: 140
-                            height: 60
-                            radius: 30
-                            color: "#2A2A2A"
-                            border.color: "#404040"
-                            border.width: 2
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            y: 30
-                        }
-
-                        // Rear window
-                        Rectangle {
-                            width: 120
-                            height: 40
-                            radius: 20
-                            color: "#2A2A2A"
-                            border.color: "#404040"
-                            border.width: 2
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            y: 320
-                        }
-
-                        // Driver seat
-                        Rectangle {
-                            width: 40
-                            height: 60
-                            radius: 15
-                            color: "#333333"
-                            x: 30
-                            y: 150
-                        }
-
-                        // Passenger seat
-                        Rectangle {
-                            width: 40
-                            height: 60
-                            radius: 15
-                            color: "#333333"
-                            x: 130
-                            y: 150
-                        }
-
-                        // Headlights indicators
-                        Rectangle {
-                            id: leftHeadlight
-                            width: 20
-                            height: 15
-                            radius: 8
-                            color: lowbeamBtn.checked || highbeamBtn.checked ? "#FFD700" : "#404040"
-                            x: 20
-                            y: 10
-                            
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                        }
-
-                        Rectangle {
-                            id: rightHeadlight
-                            width: 20
-                            height: 15
-                            radius: 8
-                            color: lowbeamBtn.checked || highbeamBtn.checked ? "#FFD700" : "#404040"
-                            x: 160
-                            y: 10
-                            
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                        }
-
-                        // Hazard indicators
-                        Rectangle {
-                            width: 15
-                            height: 10
-                            radius: 5
-                            color: hazardBtn.checked ? "#FF4444" : "#404040"
-                            x: 10
-                            y: 100
-                            
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                            
-                            SequentialAnimation on opacity {
-                                running: hazardBtn.checked
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 0.3; duration: 500 }
-                                NumberAnimation { to: 1.0; duration: 500 }
-                            }
-                        }
-
-                        Rectangle {
-                            width: 15
-                            height: 10
-                            radius: 5
-                            color: hazardBtn.checked ? "#FF4444" : "#404040"
-                            x: 175
-                            y: 100
-                            
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                            
-                            SequentialAnimation on opacity {
-                                running: hazardBtn.checked
-                                loops: Animation.Infinite
-                                NumberAnimation { to: 0.3; duration: 500 }
-                                NumberAnimation { to: 1.0; duration: 500 }
-                            }
-                        }
-
-                        // Ambient lighting strip
-                        Rectangle {
-                            width: parent.width - 20
-                            height: 4
-                            radius: 2
-                            color: ambientControl.mode > 0 ? Qt.hsva(ambientControl.mode / 7.0, 0.8, intensitySlider.value / 255.0, 1.0) : "#404040"
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            y: parent.height - 20
-                            
-                            Behavior on color { ColorAnimation { duration: 300 } }
-                        }
-
-                        // Door status indicators
-                        Rectangle {
-                            id: leftDoorIndicator
-                            width: 8
-                            height: 40
-                            radius: 4
-                            color: doorLeftBtn.checked ? "#FF4444" : "#404040"
-                            x: -12
-                            y: 180
-                            
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                        }
-
-                        Rectangle {
-                            id: rightDoorIndicator
-                            width: 8
-                            height: 40
-                            radius: 4
-                            color: doorRightBtn.checked ? "#FF4444" : "#404040"
-                            x: 204
-                            y: 180
-                            
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                        }
-
-                        // Trunk indicator
-                        Rectangle {
-                            id: trunkIndicator
-                            width: 60
-                            height: 8
-                            radius: 4
-                            color: trunkBtn.checked ? "#FF4444" : "#404040"
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            y: 408
-                            
-                            Behavior on color { ColorAnimation { duration: 200 } }
-                        }
+                    Text {
+                        text: "Lighting Controls"
+                        font.pixelSize: 20
+                        font.family: "Segoe UI"
+                        font.weight: Font.Medium
+                        color: "#00D4AA"
+                        anchors.horizontalCenter: parent.horizontalCenter
                     }
 
-                    // Gear indicator in center
-                    Rectangle {
-                        width: 60
-                        height: 60
-                        radius: 30
-                        color: "#1A1A1A"
-                        border.color: "#00D4AA"
-                        border.width: 2
-                        anchors.centerIn: parent
+                    Column {
+                        width: parent.width
+                        spacing: 15
+
+                        // Custom ToggleButton for Low Beam
+                        Rectangle {
+                            id: lowbeamBtn
+                            property bool checked: false
+                            width: parent.width
+                            height: 60
+                            radius: 10
+                            color: checked ? "#00D4AA" : "#2A2A2A"
+                            border.color: checked ? "#00D4AA" : "#404040"
+                            border.width: 2
+                            
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 10
+                                
+                                Rectangle {
+                                    width: 12
+                                    height: 8
+                                    radius: 4
+                                    color: lowbeamBtn.checked ? "#FFD700" : "#404040"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                
+                                Text {
+                                    text: "Low Beam"
+                                    color: lowbeamBtn.checked ? "#000000" : "#FFFFFF"
+                                    font.pixelSize: 16
+                                    font.family: "Segoe UI"
+                                    font.weight: Font.Medium
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    lowbeamBtn.checked = !lowbeamBtn.checked
+                                    controlPageAsync.qml_setApi_lightCtr_LowBeam(lowbeamBtn.checked)
+                                }
+                            }
+                        }
+
+                        // Custom ToggleButton for High Beam
+                        Rectangle {
+                            id: highbeamBtn
+                            property bool checked: false
+                            width: parent.width
+                            height: 60
+                            radius: 10
+                            color: checked ? "#00D4AA" : "#2A2A2A"
+                            border.color: checked ? "#00D4AA" : "#404040"
+                            border.width: 2
+                            
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 10
+                                
+                                Rectangle {
+                                    width: 12
+                                    height: 8
+                                    radius: 4
+                                    color: highbeamBtn.checked ? "#FFD700" : "#404040"
+                                    border.color: highbeamBtn.checked ? "#FFD700" : "transparent"
+                                    border.width: highbeamBtn.checked ? 2 : 0
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                
+                                Text {
+                                    text: "High Beam"
+                                    color: highbeamBtn.checked ? "#000000" : "#FFFFFF"
+                                    font.pixelSize: 16
+                                    font.family: "Segoe UI"
+                                    font.weight: Font.Medium
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    highbeamBtn.checked = !highbeamBtn.checked
+                                    controlPageAsync.qml_setApi_lightCtr_HighBeam(highbeamBtn.checked)
+                                }
+                            }
+                        }
+
+                        // Custom ToggleButton for Hazard Lights
+                        Rectangle {
+                            id: hazardBtn
+                            property bool checked: false
+                            width: parent.width
+                            height: 60
+                            radius: 10
+                            color: checked ? "#FF4444" : "#2A2A2A"
+                            border.color: checked ? "#FF4444" : "#404040"
+                            border.width: 2
+                            
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 10
+                                
+                                Rectangle {
+                                    width: 12
+                                    height: 8
+                                    radius: 4
+                                    color: hazardBtn.checked ? "#FF4444" : "#404040"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    
+                                    SequentialAnimation on opacity {
+                                        running: hazardBtn.checked
+                                        loops: Animation.Infinite
+                                        NumberAnimation { to: 0.3; duration: 600 }
+                                        NumberAnimation { to: 1.0; duration: 600 }
+                                    }
+                                }
+                                
+                                Text {
+                                    text: "Hazard Lights"
+                                    color: hazardBtn.checked ? "#FFFFFF" : "#FFFFFF"
+                                    font.pixelSize: 16
+                                    font.family: "Segoe UI"
+                                    font.weight: Font.Medium
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    hazardBtn.checked = !hazardBtn.checked
+                                    controlPageAsync.qml_setApi_lightCtr_Hazard(hazardBtn.checked)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Right control panel - Climate & Seat
+            Rectangle {
+                id: rightPanel
+                width: 240
+                height: 450
+                x: parent.width - width
+                y: 75
+                color: "#1A1A1A"
+                radius: 16
+                border.color: "#2A2A2A"
+                border.width: 1
+
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 20
+                    spacing: 20
+
+                    // Fan Control Section
+                    Column {
+                        width: parent.width
+                        spacing: 15
 
                         Text {
-                            anchors.centerIn: parent
-                            text: gearP.checked ? "P" : gearR.checked ? "R" : gearN.checked ? "N" : gearD.checked ? "D" : "P"
-                            font.pixelSize: 24
-                            font.bold: true
-                            color: "#00D4AA"
+                            text: "Fan Control"
+                            font.pixelSize: 20
                             font.family: "Segoe UI"
-                        }
-                    }
-                }
-
-                // Left control panel
-                Rectangle {
-                    id: leftPanel
-                    width: 280
-                    height: carIllustration.height
-                    x: 0
-                    y: 0
-                    color: "#1A1A1A"
-                    radius: 16
-                    border.color: "#2A2A2A"
-                    border.width: 1
-
-                    Column {
-                        anchors.fill: parent
-                        anchors.margins: 20
-                        spacing: 24
-
-                        // Lighting Controls
-                        Column {
-                            width: parent.width
-                            spacing: 12
-
-                            Text {
-                                text: "Lighting"
-                                font.pixelSize: 18
-                                font.family: "Segoe UI"
-                                font.weight: Font.Medium
-                                color: "#00D4AA"
-                            }
-
-                            Column {
-                                width: parent.width
-                                spacing: 8
-
-                                ToggleButton { 
-                                    id: lowbeamBtn
-                                    text: "Low Beam"
-                                    width: parent.width
-                                    onToggledChanged: {
-                                        controlPageAsync.qml_setApi_lightCtr_LowBeam(checked)
-                                    }
-                                }
-                                ToggleButton { 
-                                    id: highbeamBtn
-                                    text: "High Beam"
-                                    width: parent.width
-                                    onToggledChanged: {
-                                        controlPageAsync.qml_setApi_lightCtr_HighBeam(checked)
-                                    }
-                                }
-                                ToggleButton { 
-                                    id: hazardBtn
-                                    text: "Hazard Lights"
-                                    width: parent.width
-                                    onToggledChanged: {
-                                        controlPageAsync.qml_setApi_lightCtr_Hazard(checked)
-                                    }
-                                }
-                            }
+                            font.weight: Font.Medium
+                            color: "#00D4AA"
+                            anchors.horizontalCenter: parent.horizontalCenter
                         }
 
-                        Rectangle { width: parent.width; height: 1; color: "#2A2A2A" }
-
-                        // Ambient Lighting
                         Column {
                             width: parent.width
-                            spacing: 12
+                            spacing: 10
 
                             Text {
-                                text: "Ambient Lighting"
-                                font.pixelSize: 18
+                                text: "Speed: " + fanSlider.value + "%"
+                                font.pixelSize: 16
+                                color: "#B0B0B0"
                                 font.family: "Segoe UI"
-                                font.weight: Font.Medium
-                                color: "#00D4AA"
+                                anchors.horizontalCenter: parent.horizontalCenter
                             }
 
-                            Column {
+                            Slider {
+                                id: fanSlider
                                 width: parent.width
-                                spacing: 12
+                                from: 0
+                                stepSize: 10
+                                to: 100
+                                value: 0
 
-                                Row {
-                                    width: parent.width
-                                    spacing: 8
-
-                                    Text {
-                                        text: "Mode:"
-                                        font.pixelSize: 14
-                                        color: "#B0B0B0"
-                                        font.family: "Segoe UI"
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    ModeControl {
-                                        id: ambientControl
-                                        maxMode: 7
-                                        onModeChangedOnPressedChanged: {
-                                            controlPageAsync.qml_setApi_ambient_mode(mode)
-                                        }
+                                onValueChanged: {
+                                    if (pressed) {
+                                        // Convert percentage to 0-10 range for backend
+                                        let backendValue = Math.round(value / 10)
+                                        controlPageAsync.qml_setApi_hvac_driverSide_FanSpeed(backendValue)
+                                        controlPageAsync.qml_setApi_hvac_passengerSide_FanSpeed(backendValue)
                                     }
                                 }
 
-                                Column {
-                                    width: parent.width
-                                    spacing: 4
+                                background: Rectangle {
+                                    x: fanSlider.leftPadding
+                                    y: fanSlider.topPadding + fanSlider.availableHeight / 2 - height / 2
+                                    implicitWidth: 200
+                                    implicitHeight: 8
+                                    width: fanSlider.availableWidth
+                                    height: implicitHeight
+                                    radius: 4
+                                    color: "#2A2A2A"
 
-                                    Text {
-                                        text: "Brightness: " + Math.round((intensitySlider.value / 255) * 100) + "%"
-                                        font.pixelSize: 14
-                                        color: "#B0B0B0"
-                                        font.family: "Segoe UI"
-                                    }
-
-                                    Slider {
-                                        id: intensitySlider
-                                        width: parent.width
-                                        from: 0
-                                        stepSize: 1
-                                        to: 255
-                                        value: 0
-
-                                        onValueChanged: {
-                                            if (pressed) {
-                                                controlPageAsync.qml_setApi_ambient_intensity(value)
-                                            }
-                                        }
-
-                                        background: Rectangle {
-                                            x: intensitySlider.leftPadding
-                                            y: intensitySlider.topPadding + intensitySlider.availableHeight / 2 - height / 2
-                                            implicitWidth: 200
-                                            implicitHeight: 6
-                                            width: intensitySlider.availableWidth
-                                            height: implicitHeight
-                                            radius: 3
-                                            color: "#2A2A2A"
-
-                                            Rectangle {
-                                                width: intensitySlider.visualPosition * parent.width
-                                                height: parent.height
-                                                color: "#00D4AA"
-                                                radius: 3
-                                            }
-                                        }
-
-                                        handle: Rectangle {
-                                            x: intensitySlider.leftPadding + intensitySlider.visualPosition * (intensitySlider.availableWidth - width)
-                                            y: intensitySlider.topPadding + intensitySlider.availableHeight / 2 - height / 2
-                                            implicitWidth: 20
-                                            implicitHeight: 20
-                                            radius: 10
-                                            color: intensitySlider.pressed ? "#FFFFFF" : "#F0F0F0"
-                                            border.color: "#00D4AA"
-                                            border.width: 2
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Rectangle { width: parent.width; height: 1; color: "#2A2A2A" }
-
-                        // HVAC Controls
-                        Column {
-                            width: parent.width
-                            spacing: 12
-
-                            Text {
-                                text: "Climate Control"
-                                font.pixelSize: 18
-                                font.family: "Segoe UI"
-                                font.weight: Font.Medium
-                                color: "#00D4AA"
-                            }
-
-                            Column {
-                                width: parent.width
-                                spacing: 8
-
-                                Row {
-                                    width: parent.width
-                                    spacing: 8
-
-                                    Text {
-                                        text: "Driver:"
-                                        font.pixelSize: 14
-                                        color: "#B0B0B0"
-                                        font.family: "Segoe UI"
-                                        width: 60
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    ModeControl {
-                                        id: fanSpeedLeft
-                                        maxMode: 10
-                                        onModeChangedOnPressedChanged: {
-                                            controlPageAsync.qml_setApi_hvac_driverSide_FanSpeed(mode)
-                                        }
+                                    Rectangle {
+                                        width: fanSlider.visualPosition * parent.width
+                                        height: parent.height
+                                        color: "#00D4AA"
+                                        radius: 4
                                     }
                                 }
 
-                                Row {
-                                    width: parent.width
-                                    spacing: 8
-
-                                    Text {
-                                        text: "Passenger:"
-                                        font.pixelSize: 14
-                                        color: "#B0B0B0"
-                                        font.family: "Segoe UI"
-                                        width: 60
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-
-                                    ModeControl {
-                                        id: fanSpeedRight
-                                        maxMode: 10
-                                        onModeChangedOnPressedChanged: {
-                                            controlPageAsync.qml_setApi_hvac_passengerSide_FanSpeed(mode)
-                                        }
-                                    }
+                                handle: Rectangle {
+                                    x: fanSlider.leftPadding + fanSlider.visualPosition * (fanSlider.availableWidth - width)
+                                    y: fanSlider.topPadding + fanSlider.availableHeight / 2 - height / 2
+                                    implicitWidth: 24
+                                    implicitHeight: 24
+                                    radius: 12
+                                    color: fanSlider.pressed ? "#FFFFFF" : "#F0F0F0"
+                                    border.color: "#00D4AA"
+                                    border.width: 2
                                 }
                             }
                         }
                     }
-                }
 
-                // Right control panel
-                Rectangle {
-                    id: rightPanel
-                    width: 280
-                    height: carIllustration.height
-                    x: parent.width - width
-                    y: 0
-                    color: "#1A1A1A"
-                    radius: 16
-                    border.color: "#2A2A2A"
-                    border.width: 1
+                    // Divider
+                    Rectangle { 
+                        width: parent.width
+                        height: 1
+                        color: "#2A2A2A"
+                    }
 
+                    // Seat Control Section
                     Column {
-                        anchors.fill: parent
-                        anchors.margins: 20
-                        spacing: 24
+                        width: parent.width
+                        spacing: 15
 
-                        // Gear Control
+                        Text {
+                            text: "Seat Position"
+                            font.pixelSize: 20
+                            font.family: "Segoe UI"
+                            font.weight: Font.Medium
+                            color: "#00D4AA"
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+
                         Column {
                             width: parent.width
-                            spacing: 12
+                            spacing: 15
 
-                            Text {
-                                text: "Transmission"
-                                font.pixelSize: 18
-                                font.family: "Segoe UI"
-                                font.weight: Font.Medium
-                                color: "#00D4AA"
-                            }
-
-                            Grid {
-                                id: gearButtons
-                                columns: 2
-                                spacing: 8
+                            // Seat image with level indicator
+                            Item {
+                                width: 120
+                                height: 120
                                 anchors.horizontalCenter: parent.horizontalCenter
 
-                                property var buttons: []
-
-                                function deselectOthers(selected) {
-                                    for (let i = 0; i < buttons.length; i++) {
-                                        if (buttons[i] !== selected) {
-                                            buttons[i].checked = false
-                                        } else {
-                                            controlPageAsync.qml_setApi_gear(i)
-                                        }
-                                    }
+                                // Seat image
+                                Image {
+                                    id: seatControlImage
+                                    source: "qrc:/untitled2/resource/icons/seat.png"
+                                    width: 110
+                                    height: 110
+                                    anchors.centerIn: parent
+                                    fillMode: Image.PreserveAspectFit
+                                    smooth: true
+                                    opacity: seatLevels.currentLevel > 0 ? 1.0 : 0.5
+                                    
+                                    Behavior on opacity { NumberAnimation { duration: 200 } }
                                 }
 
-                                function selectGear(mode) {
-                                    for (let i = 0; i < buttons.length; i++) {
-                                        if (i === mode) {
-                                            buttons[i].checked = true
-                                        } else {
-                                            buttons[i].checked = false
-                                        }
+                                // Position level indicator overlay
+                                Rectangle {
+                                    width: 30
+                                    height: 30
+                                    radius: 15
+                                    color: seatLevels.currentLevel > 0 ? "#00D4AA" : "#404040"
+                                    border.color: "#FFFFFF"
+                                    border.width: 2
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: seatLevels.currentLevel > 0 ? seatLevels.currentLevel : "0"
+                                        font.pixelSize: 14
+                                        font.bold: true
+                                        color: "#FFFFFF"
                                     }
-                                }
-
-                                ToggleButton {
-                                    id: gearP
-                                    text: "P"
-                                    width: 60
-                                    height: 60
-                                    checked: true
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            if (!gearP.checked) {
-                                                gearP.checked = true
-                                                gearButtons.deselectOthers(gearP)
-                                            }
-                                        }
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                    }
-                                    Component.onCompleted: gearButtons.buttons.push(gearP)
-                                }
-
-                                ToggleButton {
-                                    id: gearR
-                                    text: "R"
-                                    width: 60
-                                    height: 60
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            if (!gearR.checked) {
-                                                gearR.checked = true
-                                                gearButtons.deselectOthers(gearR)
-                                            }
-                                        }
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                    }
-                                    Component.onCompleted: gearButtons.buttons.push(gearR)
-                                }
-
-                                ToggleButton {
-                                    id: gearN
-                                    text: "N"
-                                    width: 60
-                                    height: 60
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            if (!gearN.checked) {
-                                                gearN.checked = true
-                                                gearButtons.deselectOthers(gearN)
-                                            }
-                                        }
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                    }
-                                    Component.onCompleted: gearButtons.buttons.push(gearN)
-                                }
-
-                                ToggleButton {
-                                    id: gearD
-                                    text: "D"
-                                    width: 60
-                                    height: 60
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: {
-                                            if (!gearD.checked) {
-                                                gearD.checked = true
-                                                gearButtons.deselectOthers(gearD)
-                                            }
-                                        }
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                    }
-                                    Component.onCompleted: gearButtons.buttons.push(gearD)
                                 }
                             }
-                        }
 
-                        Rectangle { width: parent.width; height: 1; color: "#2A2A2A" }
+                            Row {
+                                id: seatLevels
+                                spacing: 12
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                property int currentLevel: 0
 
-                        // Door and Access Controls
-                        Column {
-                            width: parent.width
-                            spacing: 12
-
-                            Text {
-                                text: "Access Control"
-                                font.pixelSize: 18
-                                font.family: "Segoe UI"
-                                font.weight: Font.Medium
-                                color: "#00D4AA"
-                            }
-
-                            Column {
-                                width: parent.width
-                                spacing: 8
-
-                                ToggleButton { 
-                                    id: doorLeftBtn
-                                    text: "Driver Door"
-                                    width: parent.width
-                                    onToggledChanged: {
-                                        controlPageAsync.qml_setApi_door_driverSide_isOpen(checked)
+                                // Level 1 Button
+                                Rectangle {
+                                    id: seatLevel1
+                                    property bool checked: seatLevels.currentLevel === 1
+                                    width: 60
+                                    height: 60
+                                    radius: 10
+                                    color: checked ? "#00D4AA" : "#2A2A2A"
+                                    border.color: checked ? "#00D4AA" : "#404040"
+                                    border.width: 2
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "1"
+                                        color: seatLevel1.checked ? "#000000" : "#FFFFFF"
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            seatLevels.currentLevel = 1
+                                            controlPageAsync.qml_setApi_seat_driverSide_position(1)
+                                        }
                                     }
                                 }
 
-                                ToggleButton { 
-                                    id: doorRightBtn
-                                    text: "Passenger Door"
-                                    width: parent.width
-                                    onToggledChanged: {
-                                        controlPageAsync.qml_setApi_door_passengerSide_isOpen(checked)
+                                // Level 2 Button
+                                Rectangle {
+                                    id: seatLevel2
+                                    property bool checked: seatLevels.currentLevel === 2
+                                    width: 60
+                                    height: 60
+                                    radius: 10
+                                    color: checked ? "#00D4AA" : "#2A2A2A"
+                                    border.color: checked ? "#00D4AA" : "#404040"
+                                    border.width: 2
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "2"
+                                        color: seatLevel2.checked ? "#000000" : "#FFFFFF"
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            seatLevels.currentLevel = 2
+                                            controlPageAsync.qml_setApi_seat_driverSide_position(2)
+                                        }
                                     }
                                 }
 
-                                ToggleButton { 
-                                    id: trunkBtn
-                                    text: "Trunk"
-                                    width: parent.width
-                                    onToggledChanged: {
-                                        controlPageAsync.qml_setApi_trunk_rear_isOpen(checked)
+                                // Level 3 Button
+                                Rectangle {
+                                    id: seatLevel3
+                                    property bool checked: seatLevels.currentLevel === 3
+                                    width: 60
+                                    height: 60
+                                    radius: 10
+                                    color: checked ? "#00D4AA" : "#2A2A2A"
+                                    border.color: checked ? "#00D4AA" : "#404040"
+                                    border.width: 2
+                                    
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "3"
+                                        color: seatLevel3.checked ? "#000000" : "#FFFFFF"
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        onClicked: {
+                                            seatLevels.currentLevel = 3
+                                            controlPageAsync.qml_setApi_seat_driverSide_position(3)
+                                        }
                                     }
                                 }
                             }

@@ -69,6 +69,8 @@ qt_add_qml_module(dk_ivi
         resource/icons/sec_security_processing.gif
         resource/icons/sec_under_attack.mp3
         resource/icons/trashbin2.png
+        resource/icons/car.png
+        resource/icons/seat.png
 )
 
 set_target_properties(dk_ivi PROPERTIES

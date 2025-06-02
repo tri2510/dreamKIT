@@ -610,22 +610,20 @@ Rectangle {
                                         }
                                     }
                                     
-                                    // Dynamic pulse animation when selected
+                                    // Modern breathing animation instead of rotation
                                     SequentialAnimation on scale {
                                         running: settingsList.currentIndex === index
                                         loops: Animation.Infinite
-                                        NumberAnimation { to: 1.3; duration: 500; easing.type: Easing.InOutElastic }
-                                        NumberAnimation { to: 1.0; duration: 500; easing.type: Easing.InOutElastic }
+                                        NumberAnimation { to: 1.08; duration: 2000; easing.type: Easing.InOutSine }
+                                        NumberAnimation { to: 1.0; duration: 2000; easing.type: Easing.InOutSine }
                                     }
                                     
-                                    // Rotation animation when active
-                                    RotationAnimation on rotation {
+                                    // Subtle opacity breathing when active
+                                    SequentialAnimation on opacity {
                                         running: settingsList.currentIndex === index
                                         loops: Animation.Infinite
-                                        from: 0
-                                        to: 360
-                                        duration: 3000
-                                        easing.type: Easing.Linear
+                                        NumberAnimation { to: 0.9; duration: 2000; easing.type: Easing.InOutSine }
+                                        NumberAnimation { to: 1.0; duration: 2000; easing.type: Easing.InOutSine }
                                     }
                                 }
 
