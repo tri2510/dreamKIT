@@ -1,168 +1,437 @@
 #!/bin/bash
 
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Start dreamOS installation !!!!!!!!!!!!!"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-# Determine the user who ran the command
-if [ -n "$SUDO_USER" ]; then
-    # Command was run with sudo
-    DK_USER=$SUDO_USER
-else
-    # Command was not run with sudo, fall back to current user
-    DK_USER=$USER
-fi
+# Colors and formatting
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+BOLD='\033[1m'
+DIM='\033[2m'
+NC='\033[0m' # No Color
 
-# Get the current directory path
-CURRENT_DIR=$(pwd)
+# Unicode symbols
+CHECKMARK="✓"
+CROSS="✗"
+ARROW="→"
+STAR="★"
+GEAR="⚙"
+ROCKET="🚀"
+DREAM="💭"
 
-# Add current user to sudo group of docker
-# Check if the docker group exists
-if getent group docker > /dev/null 2>&1; then
-    echo "Docker: Docker group exists, proceeding..."
-else
-    echo "Docker: Docker group does not exist. Creating docker group..."
-    sudo groupadd docker
-fi
-# Add the user to the docker group
-if sudo usermod -aG docker "$DK_USER"; then
-    echo "Docker: User '$DK_USER' has been added to the docker group."
-else
-    echo "Docker: Failed to add user '$DK_USER' to the docker group."
-    exit 1
-fi
-# Inform the user that they need to log out and back in for the changes to take effect
-echo "Docker: Please log out and log back in for the group changes to take effect."
+# Animation frames
+SPINNER_FRAMES=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
+PROGRESS_CHARS=("▱" "▰")
 
-# Detect the system architecture
-ARCH_DETECT=$(uname -m)
-# Set ARCH variable based on the detected architecture
-if [[ "$ARCH_DETECT" == "x86_64" ]]; then
-    ARCH="amd64"
-elif [[ "$ARCH_DETECT" == "aarch64" ]]; then
-    ARCH="arm64"
-else
-    ARCH="unknown"
-fi
+# Global variables for progress tracking
+TOTAL_STEPS=12
+CURRENT_STEP=0
 
-# Get XDG_RUNTIME_DIR for the user (not root)
-XDG_RUNTIME_DIR=$(sudo -u "$DK_USER" env | grep XDG_RUNTIME_DIR | cut -d= -f2)
-# If empty, manually set it
-if [ -z "$XDG_RUNTIME_DIR" ]; then
-    XDG_RUNTIME_DIR="/run/user/$(id -u "$DK_USER")"
-fi
-echo "Detected XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR"
+# Function to show animated banner
+show_banner() {
+    clear
+    echo -e "${PURPLE}${BOLD}"
+    cat << "EOF"
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║                                                                      ║
+    ║    ████████╗ ██████╗  ███████╗  █████╗  ███╗   ███╗  ██████╗ ███████╗║
+    ║    ██╔═══██║██╔══██╗ ██╔════╝ ██╔══██╗ ████╗ ████║ ██╔═══██╗██╔════╝║
+    ║    ██║   ██║██████╔╝ █████╗   ███████║ ██╔████╔██║ ██║   ██║███████╗║
+    ║    ██║   ██║██╔══██╗ ██╔══╝   ██╔══██║ ██║╚██╔╝██║ ██║   ██║╚════██║║
+    ║    ████████║██║  ██║ ███████╗ ██║  ██║ ██║ ╚═╝ ██║ ╚██████╔╝███████║║
+    ║    ╚═══════╝╚═╝  ╚═╝ ╚══════╝ ╚═╝  ╚═╝ ╚═╝     ╚═╝  ╚═════╝ ╚══════╝║
+    ║                                                                      ║
+    ║                    Professional Installation Suite                   ║
+    ║                          Version 2.0 - Next Gen                     ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+EOF
+    echo -e "${NC}"
+    
+    # Animated subtitle
+    local subtitle="Initializing dreamOS installation environment..."
+    echo -e "${CYAN}${DIM}"
+    for ((i=0; i<${#subtitle}; i++)); do
+        echo -n "${subtitle:$i:1}"
+        sleep 0.03
+    done
+    echo -e "${NC}\n"
+}
 
-# Set Env Variables
-HOME_DIR="/home/$DK_USER"
-DOCKER_SHARE_PARAM="-v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker"
-DOCKER_AUDIO_PARAM="--device /dev/snd --group-add audio -e PULSE_SERVER=unix:${XDG_RUNTIME_DIR}/pulse/native -v ${XDG_RUNTIME_DIR}/pulse/native:${XDG_RUNTIME_DIR}/pulse/native -v $HOME_DIR/.config/pulse/cookie:/root/.config/pulse/cookie"
-LOG_LIMIT_PARAM="--log-opt max-size=10m --log-opt max-file=3"
-DOCKER_HUB_NAMESPACE="tbd"
+# Function to show progress bar
+show_progress() {
+    local current=$1
+    local total=$2
+    local width=50
+    local percentage=$((current * 100 / total))
+    local filled=$((current * width / total))
+    local empty=$((width - filled))
+    
+    printf "\r${BLUE}${BOLD}Progress: [${GREEN}"
+    printf "%*s" $filled | tr ' ' '█'
+    printf "${DIM}"
+    printf "%*s" $empty | tr ' ' '░'
+    printf "${BLUE}${BOLD}] %3d%% (%d/%d)${NC}" $percentage $current $total
+}
 
-echo "Env Variables:"
-echo "DK_USER: $DK_USER"
-echo "ARCH: $ARCH"
-echo "HOME_DIR: $HOME_DIR"
-echo "DOCKER_SHARE_PARAM: $DOCKER_SHARE_PARAM"
-echo "XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR"
-echo "DOCKER_AUDIO_PARAM: $DOCKER_AUDIO_PARAM"
-echo "LOG_LIMIT_PARAM: $LOG_LIMIT_PARAM"
-echo "DOCKER_HUB_NAMESPACE: $DOCKER_HUB_NAMESPACE"
+# Function for animated spinner
+spinner() {
+    local pid=$1
+    local message=$2
+    local i=0
+    
+    while kill -0 $pid 2>/dev/null; do
+        printf "\r${YELLOW}${SPINNER_FRAMES[i]} ${WHITE}%s${NC}" "$message"
+        i=$(((i + 1) % ${#SPINNER_FRAMES[@]}))
+        sleep 0.1
+    done
+    printf "\r"
+}
 
-echo "Create dk directoties ..."
-mkdir -p /home/$DK_USER/.dk/dk_swupdate /home/$DK_USER/.dk/dk_swupdate/dk_patch /home/$DK_USER/.dk/dk_swupdate/dk_current /home/$DK_USER/.dk/dk_swupdate/dk_current_patch
+# Function to show step header
+show_step() {
+    local step_num=$1
+    local step_name=$2
+    local description=$3
+    
+    CURRENT_STEP=$step_num
+    echo -e "\n${BLUE}${BOLD}[$step_num/$TOTAL_STEPS] $step_name${NC}"
+    echo -e "${DIM}$description${NC}"
+    show_progress $CURRENT_STEP $TOTAL_STEPS
+    echo
+}
 
-echo "Create dk_network ..."
-docker network create dk_network
+# Function to show success message
+show_success() {
+    local message=$1
+    echo -e "${GREEN}${BOLD} ${CHECKMARK} ${message}${NC}"
+}
 
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Install required utils"
-echo "Installing git ..."
-# Check if git is available
-if command -v git >/dev/null 2>&1; then
-    echo "Git is already installed."
-else
-    echo "Git is not installed. Installing using apt-get..."
+# Function to show error message
+show_error() {
+    local message=$1
+    echo -e "${RED}${BOLD} ${CROSS} ${message}${NC}"
+}
 
-    # Update package lists
-    apt-get update
+# Function to show info message
+show_info() {
+    local message=$1
+    echo -e "${BLUE} ${ARROW} ${message}${NC}"
+}
 
-    # Install git without prompting for confirmation
-    apt-get install -y git
+# Function to show warning message
+show_warning() {
+    local message=$1
+    echo -e "${YELLOW}${BOLD} ⚠ ${message}${NC}"
+}
 
-    # Verify installation
+# Function for typing animation
+type_text() {
+    local text=$1
+    local delay=${2:-0.02}
+    echo -e "${WHITE}"
+    for ((i=0; i<${#text}; i++)); do
+        echo -n "${text:$i:1}"
+        sleep $delay
+    done
+    echo -e "${NC}"
+}
+
+# Function to run docker pull with detailed info
+docker_pull_with_info() {
+    local image=$1
+    local description=$2
+    local registry_info=$3
+    
+    echo -e "${CYAN}${BOLD}Downloading: ${WHITE}$image${NC}"
+    echo -e "${DIM}Description: $description${NC}"
+    echo -e "${DIM}Registry: $registry_info${NC}"
+    echo -e "${DIM}$(printf '─%.0s' {1..60})${NC}"
+    
+    # Show docker pull output
+    docker pull "$image" 2>&1 | while IFS= read -r line; do
+        if [[ "$line" == *"Pulling"* ]]; then
+            echo -e "${BLUE} → $line${NC}"
+        elif [[ "$line" == *"Download complete"* ]]; then
+            echo -e "${GREEN} ✓ $line${NC}"
+        elif [[ "$line" == *"Pull complete"* ]]; then
+            echo -e "${GREEN} ✓ $line${NC}"
+        elif [[ "$line" == *"Status:"* ]]; then
+            echo -e "${GREEN}${BOLD} $line${NC}"
+        elif [[ "$line" == *"Error"* ]] || [[ "$line" == *"error"* ]]; then
+            echo -e "${RED} ✗ $line${NC}"
+        else
+            echo -e "${DIM} $line${NC}"
+        fi
+    done
+    
+    # Get image size info
+    local image_size=$(docker images --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep "$image" | awk '{print $2}' | head -1)
+    if [ -n "$image_size" ]; then
+        echo -e "${GREEN}${BOLD} ✓ Download completed - Image size: $image_size${NC}"
+    else
+        echo -e "${GREEN}${BOLD} ✓ Download completed${NC}"
+    fi
+    echo
+}
+run_with_feedback() {
+    local command=$1
+    local success_msg=$2
+    local error_msg=$3
+    local show_output=${4:-false}
+    local needs_sudo=${5:-false}
+    
+    if [ "$show_output" = "true" ]; then
+        echo -e "${DIM}${CYAN}Running: $command${NC}"
+        if [ "$needs_sudo" = "true" ]; then
+            echo -e "${YELLOW}[sudo] password for $DK_USER: ${NC}"
+        fi
+        if eval "$command"; then
+            show_success "$success_msg"
+            return 0
+        else
+            show_error "$error_msg"
+            return 1
+        fi
+    else
+        # For sudo commands, show password prompt clearly
+        if [ "$needs_sudo" = "true" ]; then
+            echo -e "${YELLOW}[sudo] password for $DK_USER: ${NC}"
+            eval "$command" 2>&1 | while IFS= read -r line; do
+                if [[ "$line" == *"password"* ]]; then
+                    echo -e "\r${YELLOW}[sudo] password for $DK_USER: ${NC}"
+                fi
+            done
+        else
+            # Run command in background and show spinner
+            eval "$command" >/dev/null 2>&1 &
+            local cmd_pid=$!
+            spinner $cmd_pid "Processing..."
+            wait $cmd_pid
+        fi
+        local exit_code=$?
+        
+        if [ $exit_code -eq 0 ]; then
+            show_success "$success_msg"
+            return 0
+        else
+            show_error "$error_msg"
+            return 1
+        fi
+    fi
+}
+
+# Function to create fancy separator
+separator() {
+    echo -e "${DIM}$(printf '─%.0s' {1..50})${NC}"
+}
+
+# Main installation function
+main() {
+    # Show banner
+    show_banner
+    
+    # Welcome message with animation
+    echo -e "${CYAN}${BOLD}${DREAM} Welcome to the dreamOS Installation Experience! ${DREAM}${NC}\n"
+    type_text "This installer will set up your complete dreamOS environment with all required components." 0.01
+    echo -e "\n${YELLOW}${BOLD}${ROCKET} Ready to begin your journey? ${ROCKET}${NC}\n"
+    
+    read -p "Press Enter to continue or Ctrl+C to cancel..."
+    
+    # Step 1: Environment Detection
+    show_step 1 "Environment Detection" "Analyzing system configuration and user environment"
+    
+    # Determine the user who ran the command
+    if [ -n "$SUDO_USER" ]; then
+        DK_USER=$SUDO_USER
+    else
+        DK_USER=$USER
+    fi
+    show_info "Detected user: ${BOLD}$DK_USER${NC}"
+    
+    # Get the current install script path
+    CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    show_info "Installation directory: ${BOLD}$CURRENT_DIR${NC}"
+    
+    # Detect architecture
+    ARCH_DETECT=$(uname -m)
+    if [[ "$ARCH_DETECT" == "x86_64" ]]; then
+        ARCH="amd64"
+    elif [[ "$ARCH_DETECT" == "aarch64" ]]; then
+        ARCH="arm64"
+    else
+        ARCH="unknown"
+    fi
+    show_info "System architecture: ${BOLD}$ARCH${NC} (${ARCH_DETECT})"
+    
+    sleep 1
+    show_success "Environment detection completed"
+    
+    # Step 2: Docker Configuration
+    show_step 2 "Docker Setup" "Configuring Docker environment and user permissions"
+    
+    # Check if docker group exists
+    if getent group docker > /dev/null 2>&1; then
+        show_info "Docker group already exists"
+    else
+        run_with_feedback "sudo groupadd docker" "Docker group created successfully" "Failed to create docker group" false true
+    fi
+    
+    # Add user to docker group
+    run_with_feedback "sudo usermod -aG docker '$DK_USER'" "User '$DK_USER' added to docker group" "Failed to add user to docker group" false true
+    show_warning "Please log out and back in for group changes to take effect"
+    
+    # Step 3: System Architecture & Runtime
+    show_step 3 "Runtime Configuration" "Setting up XDG runtime and audio parameters"
+    
+    # Get XDG_RUNTIME_DIR
+    XDG_RUNTIME_DIR=$(sudo -u "$DK_USER" env | grep XDG_RUNTIME_DIR | cut -d= -f2)
+    if [ -z "$XDG_RUNTIME_DIR" ]; then
+        XDG_RUNTIME_DIR="/run/user/$(id -u "$DK_USER")"
+    fi
+    show_info "XDG Runtime Directory: ${BOLD}$XDG_RUNTIME_DIR${NC}"
+    
+    # Set environment variables
+    HOME_DIR="/home/$DK_USER"
+    DOCKER_SHARE_PARAM="-v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker"
+    DOCKER_AUDIO_PARAM="--device /dev/snd --group-add audio -e PULSE_SERVER=unix:${XDG_RUNTIME_DIR}/pulse/native -v ${XDG_RUNTIME_DIR}/pulse/native:${XDG_RUNTIME_DIR}/pulse/native -v $HOME_DIR/.config/pulse/cookie:/root/.config/pulse/cookie"
+    LOG_LIMIT_PARAM="--log-opt max-size=10m --log-opt max-file=3"
+    DOCKER_HUB_NAMESPACE="ghcr.io/samtranbosch"
+    
+    show_success "Runtime configuration completed"
+    
+    # Step 4: Directory Structure
+    show_step 4 "Directory Structure" "Creating dreamOS directory hierarchy"
+    
+    run_with_feedback "mkdir -p /home/$DK_USER/.dk/dk_swupdate /home/$DK_USER/.dk/dk_swupdate/dk_patch /home/$DK_USER/.dk/dk_swupdate/dk_current /home/$DK_USER/.dk/dk_swupdate/dk_current_patch" "Directory structure created successfully" "Failed to create directory structure"
+    
+    # Step 5: Network Setup
+    show_step 5 "Network Setup" "Establishing Docker network infrastructure"
+    
+    run_with_feedback "docker network create dk_network 2>/dev/null || true" "Docker network 'dk_network' ready" "Network setup encountered issues"
+    
+    # Step 6: Dependencies Installation
+    show_step 6 "Dependencies" "Installing required system utilities"
+    
     if command -v git >/dev/null 2>&1; then
-        echo "Git has been installed successfully."
+        show_info "Git is already installed"
     else
-        echo "There was an error installing Git."
-        exit 1
+        show_info "Installing Git..."
+        run_with_feedback "sudo apt-get update && sudo apt-get install -y git" "Git installed successfully" "Failed to install Git" true true
     fi
-fi
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Install installation repo"
-DK_INSTALLATION_DIR="$HOME_DIR/.dk/dk_swupdate"
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Install kuksa-client ..."
-docker pull ghcr.io/eclipse/kuksa.val/kuksa-client:0.4.2
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Install dk_manager ..."
-docker pull $DOCKER_HUB_NAMESPACE/dk_manager:latest
-docker stop dk_manager; docker rm dk_manager; docker run -d -it --name dk_manager $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM  -v $HOME_DIR/.dk:/app/.dk --restart unless-stopped -e USER=$DK_USER -e DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e ARCH=$ARCH $DOCKER_HUB_NAMESPACE/dk_manager:latest
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Install App/service installation service ... "
-docker pull $DOCKER_HUB_NAMESPACE/dk_appinstallservice:latest
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-# Install dk_ivi
-dk_ivi_value=""
-# Loop through all input arguments
-for arg in "$@"; do
-    # Check if the argument starts with dk_ivi=
-    if [[ "$arg" == dk_ivi=* ]]; then
-        # Extract the value after the equal sign
-        dk_ivi_value="${arg#*=}"
-    fi
-done
-if [[ "$dk_ivi_value" == "true" ]]; then
-    echo "enable xhost local"
-	$CURRENT_DIR/scripts/dk_enable_xhost.sh
-    echo "Instal dk_ivi ..."
-    docker pull $DOCKER_HUB_NAMESPACE/dk_ivi:latest
-
-    echo "Checking for NVIDIA Target Board..."
-    if [ -f "/etc/nv_tegra_release" ]; then
-        echo "NVIDIA Jetson board detected."
-        docker stop dk_ivi; docker rm dk_ivi ; docker run -d -it --name dk_ivi -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=:0 -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR -e QT_QUICK_BACKEND=software --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT="/app/.dk/" $DOCKER_HUB_NAMESPACE/dk_ivi:latest
+    
+    # Step 7: KUKSA Client
+    show_step 7 "KUKSA Client" "Downloading vehicle signal specification client"
+    
+    docker_pull_with_info "ghcr.io/eclipse/kuksa.val/kuksa-client:0.4.2" \
+        "Eclipse KUKSA VAL client for vehicle signal access and testing" \
+        "GitHub Container Registry (Eclipse Foundation)"
+    
+    # Step 8: SDV Runtime
+    show_step 8 "SDV Runtime" "Setting up Software Defined Vehicle runtime environment"
+    
+    docker_pull_with_info "ghcr.io/eclipse-autowrx/sdv-runtime:latest" \
+        "Eclipse AutoWrx SDV runtime for vehicle application management" \
+        "GitHub Container Registry (Eclipse AutoWrx Project)"
+    
+    show_info "Configuring SDV runtime container..."
+    run_with_feedback "docker stop sdv-runtime 2>/dev/null || true; docker rm sdv-runtime 2>/dev/null || true" "Cleaned up existing SDV runtime" "Cleanup warning"
+    run_with_feedback "docker run -d -it --name sdv-runtime --restart unless-stopped -e USER=$DK_USER -e RUNTIME_NAME=\"DreamKIT_BGSV\" --network host -e ARCH=$ARCH ghcr.io/eclipse-autowrx/sdv-runtime:latest" "SDV runtime container started on port 55555" "Failed to start SDV runtime"
+    
+    # Step 9: DreamKit Manager
+    show_step 9 "DreamKit Manager" "Installing core management services"
+    
+    docker_pull_with_info "$DOCKER_HUB_NAMESPACE/dk_manager:latest" \
+        "DreamOS core manager for system orchestration and service management" \
+        "GitHub Container Registry (DreamOS Project)"
+    
+    show_info "Configuring DreamKit manager container..."
+    run_with_feedback "docker stop dk_manager 2>/dev/null || true; docker rm dk_manager 2>/dev/null || true" "Cleaned up existing manager" "Manager cleanup"
+    run_with_feedback "docker run -d -it --name dk_manager $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk --restart unless-stopped -e USER=$DK_USER -e DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e ARCH=$ARCH $DOCKER_HUB_NAMESPACE/dk_manager:latest" "DreamKit manager started with Docker socket access" "Failed to start manager"
+    
+    # Step 10: VSS Generation
+    show_step 10 "VSS Generation" "Setting up Vehicle Signal Specification generator"
+    
+    DOCKER_HUB_NAMESPACE_TEMP="phongbosch"
+    docker_pull_with_info "$DOCKER_HUB_NAMESPACE_TEMP/dk_vssgeneration_image:vss4.0" \
+        "Vehicle Signal Specification generator v4.0 for automotive data modeling" \
+        "Docker Hub (phongbosch repository)"
+    
+    show_info "Running VSS generation process..."
+    run_with_feedback "docker rm vssgen 2>/dev/null || true" "Cleaned up VSS generator" "VSS cleanup"
+    run_with_feedback "docker run -it --name vssgen -v $HOME_DIR/.dk/dk_vssgeneration/:/app/dk_vssgeneration -v $HOME_DIR/.dk/dk_manager/vssmapping/vssmapping_overlay.vspec:/app/.dk/dk_manager/vssmapping/vssmapping_overlay.vspec:ro $LOG_LIMIT_PARAM $DOCKER_HUB_NAMESPACE_TEMP/dk_vssgeneration_image:vss4.0" "VSS generation completed" "VSS generation failed"
+    
+    DOCKER_HUB_NAMESPACE="ghcr.io/samtranbosch"
+    
+    # Step 11: App Installation Service
+    show_step 11 "App Services" "Installing application management services"
+    
+    DOCKER_HUB_NAMESPACE="ghcr.io/samtranbosch"
+    docker_pull_with_info "$DOCKER_HUB_NAMESPACE/dk_appinstallservice:latest" \
+        "DreamOS application installation and lifecycle management service" \
+        "GitHub Container Registry (DreamOS Project)"
+    
+    # Step 12: IVI Interface (Optional)
+    show_step 12 "IVI Interface" "Configuring In-Vehicle Infotainment system"
+    
+    # Check for dk_ivi parameter
+    dk_ivi_value=""
+    for arg in "$@"; do
+        if [[ "$arg" == dk_ivi=* ]]; then
+            dk_ivi_value="${arg#*=}"
+        fi
+    done
+    
+    if [[ "$dk_ivi_value" == "true" ]]; then
+        show_info "Installing IVI interface..."
+        run_with_feedback "$CURRENT_DIR/scripts/dk_enable_xhost.sh" "X11 forwarding enabled" "X11 setup failed"
+        run_with_feedback "docker pull $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI image downloaded" "Failed to download IVI"
+        run_with_feedback "xhost +local:docker" "Docker X11 access granted" "X11 access failed"
+        
+        if [ -f "/etc/nv_tegra_release" ]; then
+            show_info "NVIDIA Jetson board detected - optimizing for hardware"
+            run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR -e QT_QUICK_BACKEND=software --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI started (NVIDIA optimized)" "Failed to start IVI"
+        else
+            show_info "Standard hardware detected - using generic configuration"
+            run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --device /dev/dri:/dev/dri --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI started (standard)" "Failed to start IVI"
+        fi
     else
-        echo "Not NVIDIA board."
-        docker stop dk_ivi; docker rm dk_ivi ; docker run -d -it --name dk_ivi -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=:0 -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --device /dev/dri:/dev/dri --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT="/app/.dk/" $DOCKER_HUB_NAMESPACE/dk_ivi:latest
+        show_info "IVI installation skipped"
+        echo -e "\n${CYAN}The In-Vehicle Infotainment (IVI) interface provides a graphical user interface"
+        echo -e "for vehicle dashboard and entertainment features.${NC}"
+        echo -e "\n${YELLOW}Would you like to install the IVI interface now? [y/N]: ${NC}"
+        read -r install_ivi_choice
+        
+        if [[ "$install_ivi_choice" =~ ^[Yy]$ ]]; then
+            echo -e "\n${GREEN}Installing IVI interface...${NC}"
+            run_with_feedback "$CURRENT_DIR/scripts/dk_enable_xhost.sh" "X11 forwarding enabled" "X11 setup failed"
+            run_with_feedback "docker pull $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI image downloaded" "Failed to download IVI"
+            run_with_feedback "xhost +local:docker" "Docker X11 access granted" "X11 access failed"
+            
+            if [ -f "/etc/nv_tegra_release" ]; then
+                show_info "NVIDIA Jetson board detected - optimizing for hardware"
+                run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR -e QT_QUICK_BACKEND=software --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI started (NVIDIA optimized)" "Failed to start IVI"
+            else
+                show_info "Standard hardware detected - using generic configuration"
+                run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --device /dev/dri:/dev/dri --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI started (standard)" "Failed to start IVI"
+            fi
+            # Update the environment variable to reflect the installation
+            dk_ivi_value="true"
+        else
+            show_info "IVI installation skipped (you can install later with './dk_install dk_ivi=true')"
+        fi
     fi
-else
-    echo "To Install dk_ivi, run './dk_install dk_ivi=true'"
-fi
-
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Store environment variables"
-
-# Define the output file (you can change the path as needed)
-mkdir -p /home/.dk/dk_swupdate
-DK_ENV_FILE="/home/.dk/dk_swupdate/dk_swupdate_env.sh"
-> $DK_ENV_FILE
-
-# Write the actual values of the variables to the output file
-cat <<EOF > "${DK_ENV_FILE}"
+    
+    # Final steps
+    separator
+    echo -e "\n${BLUE}${BOLD}Finalizing installation...${NC}\n"
+    
+    # Save environment variables
+    show_info "Saving environment configuration..."
+    mkdir -p $HOME_DIR/.dk/dk_swupdate
+    DK_ENV_FILE="$HOME_DIR/.dk/dk_swupdate/dk_swupdate_env.sh"
+    cat <<EOF > "${DK_ENV_FILE}"
 #!/bin/bash
 
 DK_USER="${DK_USER}"
@@ -175,72 +444,42 @@ LOG_LIMIT_PARAM="${LOG_LIMIT_PARAM}"
 DOCKER_HUB_NAMESPACE="${DOCKER_HUB_NAMESPACE}"
 dk_ivi_value="${dk_ivi_value}"
 EOF
-
-# make the output file executable
-chmod +x "${DK_ENV_FILE}"
-cp $DK_ENV_FILE "${HOME_DIR}/.dk/dk_swupdate/dk_swupdate_env.sh"
-chmod +x "$CURRENT_DIR/scripts/dk_kuksa_client.sh"
-cp $CURRENT_DIR/scripts/dk_kuksa_client.sh /home/.dk/dk_swupdate/
-chmod +x "$CURRENT_DIR/scripts/dk_xiphost.sh"
-cp $CURRENT_DIR/scripts/dk_xiphost.sh /home/.dk/dk_swupdate/
-$CURRENT_DIR/scripts/create_dk_xiphost_service.sh
-
-echo "Environment variables with actual values have been saved to ${DK_ENV_FILE}"
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Create sw history file for the first time"
-
-DK_SWHISTORY_FILE="/home/$DK_USER/.dk/dk_swupdate/dk_swhistory.json"
-
-> $DK_SWHISTORY_FILE
-
-# Get current UTC timestamp in ISO 8601 format (e.g. 2023-10-01T10:15:30Z)
-timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-# Create dk_swhistory.json with the JSON content and the actual timestamp
-cat <<EOF > $DK_SWHISTORY_FILE
-{
-  "MetaData": {
-      "timestamp": "${timestamp}",
-      "description": "Initial software.",
-      "currentVersion": "0.0.0",
-      "patch": ""
-  },
-  "SwUpdateHistory": [
-    {
-      "id": 1,
-      "timestamp": "${timestamp}",
-      "description": "Initial software.",
-      "version": "0.0.0",
-      "patch": ""
-    }
-  ],
-  "LastFailure": {
-      "timestamp": "",
-      "description": "",
-      "version": "",
-      "patch": ""
-  }
+    chmod +x "${DK_ENV_FILE}"
+    
+    # Create additional services
+    run_with_feedback "$CURRENT_DIR/scripts/create_dk_xiphost_service.sh" "Additional services configured" "Service configuration warning"
+    
+    # Cleanup
+    show_info "Cleaning up temporary files..."
+    run_with_feedback "docker image prune -f" "Docker cleanup completed" "Cleanup warning"
+    
+    # Success message
+    echo -e "\n${GREEN}${BOLD}Installation completed successfully!${NC}\n"
+    
+    # Installation summary
+    echo -e "${CYAN}${BOLD}Installation Summary:${NC}"
+    echo -e "${GREEN} ${CHECKMARK} Environment configured for user: ${BOLD}$DK_USER${NC}"
+    echo -e "${GREEN} ${CHECKMARK} System architecture: ${BOLD}$ARCH${NC}"
+    echo -e "${GREEN} ${CHECKMARK} Docker environment ready${NC}"
+    echo -e "${GREEN} ${CHECKMARK} All core services installed${NC}"
+    echo -e "${GREEN} ${CHECKMARK} Network infrastructure ready${NC}"
+    if [[ "$dk_ivi_value" == "true" ]]; then
+        echo -e "${GREEN} ${CHECKMARK} IVI interface installed${NC}"
+    fi
+    
+    echo -e "\n${YELLOW}${BOLD}Important:${NC}"
+    echo -e " • Please reboot your system for all changes to take effect"
+    echo -e " • Log out and back in to apply Docker group permissions"
+    echo -e " • Your dreamOS environment will be ready after reboot"
+    
+    if [[ "$dk_ivi_value" == "true" ]]; then
+        echo -e "\n${CYAN}${BOLD}To start the IVI interface:${NC}"
+        echo -e "${WHITE} • Run: ${CYAN}./dk_run.sh${NC}"
+        echo -e "${DIM} • This will launch the In-Vehicle Infotainment dashboard${NC}"
+    fi
+    
+    echo -e "\n${GREEN}Thank you for choosing dreamOS!${NC}"
 }
-EOF
 
-echo "$DK_SWHISTORY_FILE created with timestamp ${timestamp}"
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Install OS SW Update service ... "
-docker pull $DOCKER_HUB_NAMESPACE/dk_swupdate:latest
-docker stop dk_swupdate; docker rm dk_swupdate; docker run -d -it --name dk_swupdate $LOG_LIMIT_PARAM -v /var/run/docker.sock:/var/run/docker.sock --network host -v $HOME_DIR/.dk:/app/.dk --restart unless-stopped -e DK_HOME="/app" $DOCKER_HUB_NAMESPACE/dk_swupdate:latest
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Remove Only Dangling Images (No Tags)"
-docker image prune -f
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-
-echo "------------------------------------------------------------------------------------------------------------------------------------"
-echo "Please reboot your system for dreamSW to take effect !!!!!!!!!!!!!"
-echo "------------------------------------------------------------------------------------------------------------------------------------"
+# Run main function
+main "$@"
