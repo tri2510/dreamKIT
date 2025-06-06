@@ -4,14 +4,14 @@ on:
   push:
     branches: [ main, optimize-integration ]
     paths:
-      - 'dk-ivi-lite/Dockerfile.builder'
-      - 'dk-ivi-lite/Dockerfile.runtime'
+      - 'dreamos-core/dk-ivi-lite/Dockerfile.builder'
+      - 'dreamos-core/dk-ivi-lite/Dockerfile.runtime'
       - '.github/workflows/build-images.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'dk-ivi-lite/Dockerfile.builder'
-      - 'dk-ivi-lite/Dockerfile.runtime'
+      - 'dreamos-core/dk-ivi-lite/Dockerfile.builder'
+      - 'dreamos-core/dk-ivi-lite/Dockerfile.runtime'
   workflow_dispatch:
 
 env:
@@ -53,8 +53,8 @@ jobs:
     - name: Build and push Builder image
       uses: docker/build-push-action@v5
       with:
-        context: dk-ivi-lite
-        file: dk-ivi-lite/Dockerfile.builder
+        context: dreamos-core/dk-ivi-lite
+        file: dreamos-core/dk-ivi-lite/Dockerfile.builder
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
@@ -95,8 +95,8 @@ jobs:
     - name: Build and push Runtime image
       uses: docker/build-push-action@v5
       with:
-        context: dk-ivi-lite
-        file: dk-ivi-lite/Dockerfile.runtime
+        context: dreamos-core/dk-ivi-lite
+        file: dreamos-core/dk-ivi-lite/Dockerfile.runtime
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
