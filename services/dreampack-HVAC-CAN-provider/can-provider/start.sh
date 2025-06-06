@@ -3,7 +3,7 @@
 echo "Start dk service can provider"
 
 # Wait time for can network up
-sleep 5
+sleep 0.1
 
 # cd /app/
 # python main.py

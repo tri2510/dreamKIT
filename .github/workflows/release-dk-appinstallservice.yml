@@ -1,22 +1,21 @@
-          build-args: |
-            TARGETARCH=${TARGETARCH}name: Release DK IVI Docker Image
+name: Release DK AppInstallService Docker Image
 on:
   push:
     tags:
       - 'v*.*.*'
 jobs:
-  release:
+  build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+
       - name: Log in to GitHub Container Registry
         id: docker_login
         uses: docker/login-action@v3
@@ -24,7 +23,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Set TAG variable
         id: vars
         run: |
@@ -32,14 +31,15 @@ jobs:
           GIT_TAG=${GITHUB_REF#refs/tags/}
           TAG="${SHORT_SHA}-${GIT_TAG}"
           echo "TAG=$TAG" >> $GITHUB_ENV
-          echo "TAG=$TAG"  # output for debug
-          echo "::set-output name=TAG::$TAG"  # deprecated but kept for backward compatibility
-      
+          echo "OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v5
         with:
-          context: ./dreamos-core/dk-ivi-lite
+          context: ./dreamos-core/dk_appinstallservice
+          file: ./dreamos-core/dk_appinstallservice/Dockerfile
           push: ${{ steps.docker_login.outcome == 'success' }}
-          tags: ghcr.io/${{ github.repository_owner }}/dk_ivi:${{ env.TAG }}
+          tags: |
+            ghcr.io/${{ env.OWNER }}/dk_appinstallservice:${{ env.TAG }}
+            ghcr.io/${{ env.OWNER }}/dk_appinstallservice:latest
           platforms: linux/amd64,linux/arm64
-          file: ./dreamos-core/dk-ivi-lite/Dockerfile

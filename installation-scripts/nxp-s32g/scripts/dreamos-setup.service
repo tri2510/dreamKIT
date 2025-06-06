@@ -1,0 +1,12 @@
+[Unit]
+Description=Setup dreamOS on Boot
+After=network.target
+ 
+[Service]
+Type=oneshot
+ExecStart=/home/root/.dk/nxp-s32g/scripts/dreamos_setup.sh
+RemainAfterExit=false
+Restart=on-failure
+ 
+[Install]
+WantedBy=multi-user.target

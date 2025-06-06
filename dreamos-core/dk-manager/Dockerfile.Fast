@@ -1,0 +1,60 @@
+# First stage: Build dependencies in a full Python environment
+FROM ubuntu:24.04 AS app-builder
+#FROM debian:bookworm AS app-builder
+
+# Define the build argument for the target architecture
+ARG TARGETARCH
+
+WORKDIR /app/
+
+# Install necessary packages for building the environment
+RUN apt-get update && apt install -y git cmake build-essential libssl-dev libboost-all-dev curl qt6-base-dev pax-utils
+
+COPY copy-app-lddtree.sh /app/copy-app-lddtree.sh
+COPY src/socket.io-client-cpp/CMakeLists.txt /app/socket.io-client-cpp/CMakeLists.txt
+COPY src/socket.io-client-cpp/target/${TARGETARCH}/install /app/socket.io-client-cpp/install
+COPY src/dk-manager /app/dk-manager
+
+#RUN QMAKE_CXX_COMPILER_MACROS=$(gcc -E -dM - < /dev/null | grep -E 'define __GNUC__|define __GNUC_MINOR__' | tr -d ' ')
+
+# Install Python dependencies into a specific directory
+RUN cd /app \
+    #&& git clone --recurse-submodules https://github.com/socketio/socket.io-client-cpp.git \
+    #&& cd socket.io-client-cpp \
+    #&& mkdir build \
+    #&& cd build \
+    #&& cmake .. \
+    #&& make -j4 \
+    #&& make install \
+    #&& cd /app \
+    && cd dk-manager \
+    && mkdir build \
+    && cd build \
+    #&& /usr/lib/qt6/bin/qmake .. \
+    && cmake .. \
+    && make -j4 \
+    && chmod +x /app/copy-app-lddtree.sh \
+    && /app/copy-app-lddtree.sh 
+
+# Second stage: Create a minimal runtime environment
+FROM ubuntu:24.04 AS target
+#FROM debian:bookworm AS target
+
+RUN apt-get update && apt install -y curl
+
+WORKDIR /app
+
+# Copy the Python packages from the builder stage to the Alpine image
+COPY --from=app-builder /app/dk-manager/build/exec /app/exec
+
+# Copy application files
+COPY start.sh /app/
+
+# Set execute permission for the script
+RUN chmod +x /app/start.sh
+
+# Set environment variables
+ENV LD_LIBRARY_PATH=/app/exec
+
+# Execute the script
+CMD ["/app/start.sh"]

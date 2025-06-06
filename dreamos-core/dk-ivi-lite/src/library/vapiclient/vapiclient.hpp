@@ -58,6 +58,7 @@ namespace VehicleAPI {
     inline constexpr const char* V_Ca_Door_R1_PassengerSide_IsOpen       = "Vehicle.Cabin.Door.Row1.PassengerSide.IsOpen";
     inline constexpr const char* V_Ca_HVAC_Station_R1_Driver_FanSpeed    = "Vehicle.Cabin.HVAC.Station.Row1.Driver.FanSpeed";
     inline constexpr const char* V_Ca_HVAC_Station_R1_Passenger_FanSpeed = "Vehicle.Cabin.HVAC.Station.Row1.Passenger.FanSpeed";
+    inline constexpr const char* V_Ca_Seat_R1_DriverSide_Position        = "Vehicle.Cabin.Seat.Row1.DriverSide.Position";
 
     inline constexpr const char* V_PT_Trans_SelectedGear                 = "Vehicle.Powertrain.Transmission.SelectedGear";
 
@@ -173,6 +174,5 @@ private:
 using namespace VAPI;
 
 #define VAPI_CLIENT (VAPIClient::instance())
-
 
 #endif // VAPI_CLIENT_HPP

@@ -7,25 +7,17 @@ import VappsAsync 1.0
 Rectangle {
     id: installedvaps_page
     visible: true
-    layer.enabled: true
-    width: Screen.width
-    height: Screen.height
+    width: parent.width
+    height: parent.height
+    color: "#0F0F0F"
 
     property int numbeOfInstalledApps: 0
     property int numbeOfSearchedApps: 0
-
     property int installAppIndex: -1
     property bool isSearchTextInputEmpty: true
     property int removeAppIndex: -1
-
     property string activeAppName: ""
     property string deleteAppName: ""
-
-    Rectangle {
-        id: bg
-        color: "#212121"
-        anchors.fill: parent
-    }
 
     Component.onCompleted: {
         appListModel.clear()
@@ -52,137 +44,161 @@ Rectangle {
         }
 
         onAppendServicesInfoToServicesList: (name, author, rating, noofdownload, icon, isInstalled, appId, isSubscribed) => {
-                                      console.log(name, author, rating, noofdownload, icon)
-                                      if (name === "") {
-                                          appListModel.append({name: "No Result.", author: "", rating: "", noofdownload: "", iconpath: "", is_installed: false, appId: "", isSubscribed: false})
-                                      }
-                                      else {
-                                          appListModel.append({
-                                                                  name: name,
-                                                                  author: author,
-                                                                  rating: rating+"*",
-                                                                  noofdownload: noofdownload,
-                                                                  iconpath: icon,
-                                                                  is_installed: isInstalled,
-                                                                  appId: appId,
-                                                                  isSubscribed: isSubscribed
-                                                              })
-                                      }
-                                  }
+            if (name === "") {
+                appListModel.append({name: "No Result.", author: "", rating: "", noofdownload: "", iconpath: "", is_installed: false, appId: "", isSubscribed: false})
+            } else {
+                appListModel.append({
+                    name: name,
+                    author: author,
+                    rating: rating+"*",
+                    noofdownload: noofdownload,
+                    iconpath: icon,
+                    is_installed: isInstalled,
+                    appId: appId,
+                    isSubscribed: isSubscribed
+                })
+            }
+        }
 
-        onAppendLastRowToServicesList:  (noOfApps) => {
-                                       console.log("onAppendLastRowToAppList")
-                                       numbeOfSearchedApps = noOfApps
-                                       appListModel.append({name: "", author: "", rating: "", noofdownload: "", iconpath: ""})
-                                       appListView.positionViewAtBeginning()
-                                   }
-                                   
+        onAppendLastRowToServicesList: (noOfApps) => {
+            numbeOfSearchedApps = noOfApps
+            appListModel.append({name: "", author: "", rating: "", noofdownload: "", iconpath: ""})
+            appListView.positionViewAtBeginning()
+        }
+                               
         onUpdateStartAppMsg: (appId, isStarted, msg) => {
-                                 startSubscribePopup.message = msg
+            startSubscribePopup.message = msg
+            var chkItem = appListView.itemAtIndex(appListView.currentIndex);
+            var chkItemChildren = chkItem.children;
+            for( var i = 0 ; i < chkItemChildren.length ; ++i) {
+                if(chkItemChildren[i].objectName === appId) {
+                    chkItemChildren[i].checked = isStarted
+                }
+            }
+            appListView.currentIndex = -1
+            startAppBusyIndicator.visible = false
+            startAppBusyIndicator.running = false
+        }
 
-                                 console.log("onUpdateStartAppMsg: appListView.currentIndex: ", appListView.currentIndex)
-                                 var chkItem = appListView.itemAtIndex(appListView.currentIndex);
-                                 var chkItemChildren = chkItem.children;
-                                 // iterate over children using any machanism you prefer to filter those children
-                                 for( var i = 0 ; i < chkItemChildren.length ; ++i) {
-                                     console.log("delegate Object name: ", chkItemChildren[i].objectName)
-                                     if(chkItemChildren[i].objectName === appId) {
-                                         if (isStarted) {
-                                             chkItemChildren[i].checked = true
-                                         }
-                                         else {
-                                             chkItemChildren[i].checked = false
-                                         }
-                                         //                    console.log("found object: ", appIdString)
-                                     }
-                                 }
-                                 appListView.currentIndex = -1
-
-                                 startAppBusyIndicator.visible = false
-                                 startAppBusyIndicator.running = false
-                             }
-
-        onUpdateServicesRunningSts: (appId, isStarted, idx) => {         
-                                // Usage:
-                                var chkItem = appListView.itemAtIndex(idx);
-                                var foundChild = findChildByObjectName(chkItem, appId);
-                                if (foundChild) {
-                                    foundChild.checked = isStarted;
-                                } else {
-                                    console.log("No child with objectName: ", appId);
-                                }
-                             }
+        onUpdateServicesRunningSts: (appId, isStarted, idx) => {
+            var chkItem = appListView.itemAtIndex(idx);
+            var foundChild = findChildByObjectName(chkItem, appId);
+            if (foundChild) {
+                foundChild.checked = isStarted;
+            }
+        }
     }
 
+    // Enhanced popup dialogs with better sizing and typography
     Dialog {
         id: startSubscribePopup
         property string message: ""
-        width: 500
-        height: 400
+        width: Math.min(480, parent.width * 0.9)
+        height: Math.min(320, parent.height * 0.6)
         anchors.centerIn: parent
         modal: true
+        closePolicy: Popup.NoAutoClose
 
         onAccepted: {
             startSubscribePopup.close()
         }
 
-        contentItem: Rectangle {
-            anchors.fill: parent
-            width: 500
-            height: 400
-            color: "#676767"
-
+        background: Rectangle {
+            color: "#1A1A1A"
+            radius: 20
+            border.color: "#00D4AA40"
+            border.width: 2
+            
+            // Subtle shadow effect
             Rectangle {
-                x: 0
-                y: 0
-                width: parent.width
-                height: 300
-                color: "#00000000"
+                anchors.fill: parent
+                anchors.margins: -4
+                color: "transparent"
+                border.color: "#00000040"
+                border.width: 1
+                radius: 24
+                z: -1
+            }
+        }
+
+        contentItem: Column {
+            anchors.fill: parent
+            anchors.margins: 40
+            spacing: 32
+
+            // Header icon
+            Rectangle {
+                width: 64
+                height: 64
+                radius: 32
+                color: "#00D4AA20"
+                border.color: "#00D4AA"
+                border.width: 2
+                anchors.horizontalCenter: parent.horizontalCenter
 
                 Text {
-                    width: parent.width
-                    height: 200
                     anchors.centerIn: parent
-                    text: startSubscribePopup.message
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 16
+                    text: "▶"
+                    color: "#00D4AA"
+                    font.pixelSize: 24
+                    font.family: "Segoe UI"
+                    font.weight: Font.Bold
                 }
+            }
+
+            Text {
+                width: parent.width
+                text: startSubscribePopup.message
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+                color: "#FFFFFF"
+                font.family: "Segoe UI"
+                font.pixelSize: 18
+                font.weight: Font.Medium
+                lineHeight: 1.4
             }
 
             BusyIndicator {
                 id: startAppBusyIndicator
-                y: 270
-                height: 50
-                width: 50
+                width: 60
+                height: 60
                 anchors.horizontalCenter: parent.horizontalCenter
                 running: true
+
+                // Custom styling for busy indicator
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width + 20
+                    height: parent.height + 20
+                    color: "transparent"
+                    border.color: "#00D4AA20"
+                    border.width: 1
+                    radius: width / 2
+                }
             }
 
-            Rectangle {
-                width: 160
-                height: 80
-                x: 170
-                y: 300
-                color: "#00000000"
-
-                Text {
-                    anchors.fill: parent
-                    anchors.centerIn: parent
-                    text: qsTr("OK")
+            Button {
+                text: "OK"
+                width: 120
+                height: 48
+                anchors.horizontalCenter: parent.horizontalCenter
+                onClicked: startSubscribePopup.accepted()
+                
+                background: Rectangle {
+                    color: parent.hovered ? "#00E5BB" : "#00D4AA"
+                    radius: 24
+                    
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                }
+                
+                contentItem: Text {
+                    text: parent.text
+                    color: "#FFFFFF"
+                    font.family: "Segoe UI"
+                    font.pixelSize: 16
+                    font.weight: Font.Medium
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 18
-                    font.bold: true
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        startSubscribePopup.accepted()
-                    }
                 }
             }
         }
@@ -191,119 +207,141 @@ Rectangle {
     Dialog {
         id: unSubscribePopup
         property string appIdString: ""
-        width: 500
-        height: 400
+        width: Math.min(520, parent.width * 0.9)
+        height: Math.min(380, parent.height * 0.7)
         anchors.centerIn: parent
         modal: true
 
         onAccepted: {
-            console.log("unsubscribe: onAccepted clicked")
             appAsync.executeServices(appListView.currentIndex, activeAppName, appIdString, false);
             unSubscribePopup.close()
-//            console.log("appListView.currentIndex: ", appListView.currentIndex)
             var chkItem = appListView.itemAtIndex(appListView.currentIndex);
             var chkItemChildren = chkItem.children;
-            // iterate over children using any machanism you prefer to filter those children
-            //
             for( var i = 0 ; i < chkItemChildren.length ; ++i) {
-//                console.log("delegate Object name: ", chkItemChildren[i].objectName)
                 if(chkItemChildren[i].objectName === appIdString) {
                     chkItemChildren[i].checked = false
-//                    console.log("found object: ", appIdString)
                 }
             }
             appListView.currentIndex = -1
         }
+        
         onRejected: {
-            console.log("unsubscribe: rejected clicked")
             unSubscribePopup.close()
-//            console.log("appListView.currentIndex: ", appListView.currentIndex)
             var chkItem = appListView.itemAtIndex(appListView.currentIndex);
             var chkItemChildren = chkItem.children;
-            // iterate over children using any machanism you prefer to filter those children
-            //
             for( var i = 0 ; i < chkItemChildren.length ; ++i) {
-//                console.log("delegate Object name: ", chkItemChildren[i].objectName)
                 if(chkItemChildren[i].objectName === appIdString) {
                     chkItemChildren[i].checked = true
-//                    console.log("found object: ", appIdString)
                 }
             }
             appListView.currentIndex = -1
         }
 
-        contentItem: Rectangle {
-            anchors.fill: parent
-            width: 500
-            height: 400
-            color: "#676767"
-
+        background: Rectangle {
+            color: "#1A1A1A"
+            radius: 20
+            border.color: "#FF444460"
+            border.width: 2
+            
             Rectangle {
-                x: 0
-                y: 0
-                width: parent.width
-                height: 300
-                color: "#00000000"
+                anchors.fill: parent
+                anchors.margins: -4
+                color: "transparent"
+                border.color: "#00000040"
+                border.width: 1
+                radius: 24
+                z: -1
+            }
+        }
+
+        contentItem: Column {
+            anchors.fill: parent
+            anchors.margins: 40
+            spacing: 32
+
+            // Warning icon
+            Rectangle {
+                width: 64
+                height: 64
+                radius: 32
+                color: "#FF444420"
+                border.color: "#FF4444"
+                border.width: 2
+                anchors.horizontalCenter: parent.horizontalCenter
 
                 Text {
-                    width: parent.width
-                    height: 200
                     anchors.centerIn: parent
-                    text: `Want to unsubcribe to <b>${activeAppName}</b> ?<br><br>This feature shall be stopped when you press "Confirm" !!!`
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 16
+                    text: "⚠"
+                    color: "#FF4444"
+                    font.pixelSize: 28
+                    font.family: "Segoe UI"
                 }
             }
 
-            Rectangle {
-                x: 40
-                y: 300
-                width: 160
-                height: 80
-                color: "#00000000"
+            Text {
+                width: parent.width
+                text: `Want to unsubscribe from <b>${activeAppName}</b>?<br><br>This app will be stopped when you press "Confirm"!`
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+                color: "#FFFFFF"
+                font.family: "Segoe UI"
+                font.pixelSize: 18
+                font.weight: Font.Medium
+                lineHeight: 1.4
+            }
 
-                Text {
-                    anchors.fill: parent
-                    anchors.centerIn: parent
-                    text: qsTr("No")
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 18
-                    font.bold: true
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        unSubscribePopup.rejected()
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 20
+
+                Button {
+                    text: "Cancel"
+                    width: 120
+                    height: 48
+                    onClicked: unSubscribePopup.rejected()
+                    
+                    background: Rectangle {
+                        color: parent.hovered ? "#353535" : "#2A2A2A"
+                        radius: 24
+                        border.color: parent.hovered ? "#606060" : "#404040"
+                        border.width: 1
+                        
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
+                    }
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        color: "#FFFFFF"
+                        font.family: "Segoe UI"
+                        font.pixelSize: 16
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
-            }
 
-            Rectangle {
-                width: 160
-                height: 80
-                x: 300
-                y: 300
-                color: "#00000000"
-
-                Text {
-                    anchors.fill: parent
-                    anchors.centerIn: parent
-                    text: qsTr("Confirm")
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 18
-                    font.bold: true
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        unSubscribePopup.accepted()
+                Button {
+                    text: "Confirm"
+                    width: 120
+                    height: 48
+                    onClicked: unSubscribePopup.accepted()
+                    
+                    background: Rectangle {
+                        color: parent.hovered ? "#FF6666" : "#FF4444"
+                        radius: 24
+                        
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                    }
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        color: "#FFFFFF"
+                        font.family: "Segoe UI"
+                        font.pixelSize: 16
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
             }
@@ -313,330 +351,488 @@ Rectangle {
     Dialog {
         id: removeAppPopup
         property string appIdString: ""
-        width: 500
-        height: 400
+        width: Math.min(520, parent.width * 0.9)
+        height: Math.min(380, parent.height * 0.7)
         anchors.centerIn: parent
         modal: true
 
         onAccepted: {
-            console.log("removeAppPopup: onAccepted clicked")
             appAsync.removeServices(appListView.currentIndex);
             removeAppPopup.close()
             appListView.currentIndex = -1
         }
+        
         onRejected: {
-            console.log("removeAppPopup: rejected clicked")
             removeAppPopup.close()
             appListView.currentIndex = -1
         }
 
-        contentItem: Rectangle {
-            anchors.fill: parent
-            width: 500
-            height: 400
-            color: "#676767"
-
+        background: Rectangle {
+            color: "#1A1A1A"
+            radius: 20
+            border.color: "#FF444460"
+            border.width: 2
+            
             Rectangle {
-                x: 0
-                y: 0
-                width: parent.width
-                height: 300
-                color: "#00000000"
+                anchors.fill: parent
+                anchors.margins: -4
+                color: "transparent"
+                border.color: "#00000040"
+                border.width: 1
+                radius: 24
+                z: -1
+            }
+        }
+
+        contentItem: Column {
+            anchors.fill: parent
+            anchors.margins: 40
+            spacing: 32
+
+            // Delete icon
+            Rectangle {
+                width: 64
+                height: 64
+                radius: 32
+                color: "#FF444420"
+                border.color: "#FF4444"
+                border.width: 2
+                anchors.horizontalCenter: parent.horizontalCenter
 
                 Text {
-                    width: parent.width
-                    height: 200
                     anchors.centerIn: parent
-                    text: `Want to delete <b>${deleteAppName}</b> ?<br><br>This feature shall be stopped and deleted when you press "Confirm" !!!`
-                    wrapMode: Text.WordWrap
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 16
+                    text: "🗑"
+                    color: "#FF4444"
+                    font.pixelSize: 24
+                    font.family: "Segoe UI"
                 }
             }
 
-            Rectangle {
-                x: 40
-                y: 300
-                width: 160
-                height: 80
-                color: "#00000000"
+            Text {
+                width: parent.width
+                text: `Want to delete <b>${deleteAppName}</b>?<br><br>This app will be stopped and deleted when you press "Confirm"!`
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+                color: "#FFFFFF"
+                font.family: "Segoe UI"
+                font.pixelSize: 18
+                font.weight: Font.Medium
+                lineHeight: 1.4
+            }
 
-                Text {
-                    anchors.fill: parent
-                    anchors.centerIn: parent
-                    text: qsTr("No")
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 18
-                    font.bold: true
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        removeAppPopup.rejected()
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 20
+
+                Button {
+                    text: "Cancel"
+                    width: 120
+                    height: 48
+                    onClicked: removeAppPopup.rejected()
+                    
+                    background: Rectangle {
+                        color: parent.hovered ? "#353535" : "#2A2A2A"
+                        radius: 24
+                        border.color: parent.hovered ? "#606060" : "#404040"
+                        border.width: 1
+                        
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
+                    }
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        color: "#FFFFFF"
+                        font.family: "Segoe UI"
+                        font.pixelSize: 16
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
-            }
 
-            Rectangle {
-                width: 160
-                height: 80
-                x: 300
-                y: 300
-                color: "#00000000"
-
-                Text {
-                    anchors.fill: parent
-                    anchors.centerIn: parent
-                    text: qsTr("Confirm")
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 18
-                    font.bold: true
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        removeAppPopup.accepted()
+                Button {
+                    text: "Delete"
+                    width: 120
+                    height: 48
+                    onClicked: removeAppPopup.accepted()
+                    
+                    background: Rectangle {
+                        color: parent.hovered ? "#FF6666" : "#FF4444"
+                        radius: 24
+                        
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                    }
+                    
+                    contentItem: Text {
+                        text: parent.text
+                        color: "#FFFFFF"
+                        font.family: "Segoe UI"
+                        font.pixelSize: 16
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
             }
         }
     }
 
+    // Header
     Rectangle {
-        id: searchAppRec
-        x: 38
-        y: 100
-        width: installedvaps_page.width - 100
-        height: installedvaps_page.height - 100
-        clip: true
+        id: headerArea
+        width: parent.width
+        height: 80
         color: "transparent"
-        border.color: "#d7d9cc"
-        border.width: 0
-        visible: true
+
+        Text {
+            text: "Vehicle Apps"
+            x: 32
+            y: 30
+            font.bold: true
+            font.pixelSize: 28
+            font.weight: Font.Bold
+            color: "#00D4AA"
+            font.family: "Segoe UI"
+        }
+    }
+
+    // Main content area
+    Rectangle {
+        id: contentArea
+        anchors.top: headerArea.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 32
+        color: "transparent"
 
         ListView {
             id: appListView
-            property int installPopupX: 0
-            property int installPopupY: 0
+            anchors.fill: parent
             currentIndex: -1
-            x: 19
-            y: 0
-            width: searchAppRec.width
-            height: searchAppRec.width
+            spacing: 16
             clip: true
 
             function setActiveIndex(index) {
-                appListView.forceActiveFocus()
-                appListView.currentIndex = index
+                forceActiveFocus()
+                currentIndex = index
             }
 
             delegate: Item {
                 id: appListViewItem
-                x: 5
                 width: appListView.width
                 height: 100
-                clip: true
+                visible: name.length > 0 && name !== "No Result."
+
                 Rectangle {
-                        x: 0
-                        y: 80
-                        width: appListView.width
-                        height: 1
-                        color: "white"
-                        border.width: 1
-                        border.color: "white"
-                    }
-                Row {
-                    id: row1
-                    spacing: 20
-                    width: appListViewItem.width
-                    height: 50
-                    //clip: true                     
-                    Image {
-                        //                        id: imageId
-                        source: iconpath
-                        width: row1.height
-                        height: row1.height
-                    }
+                    id: appCard
+                    anchors.fill: parent
+                    color: "#1A1A1A"
+                    radius: 16
+                    border.color: "#2A2A2A"
+                    border.width: 1
 
-                    Rectangle {
-                        x: row1.height + 30
-                        height: appListViewItem.height
-                        width: 300
-                        color: "#00000000"
-                        clip: true
-                        Text {
-                            id: appNameId
-                            x: 0
-                            y: 0
-                            text: name
-                            font.bold: true
-                            font.pixelSize: 20
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                        }
-                        Text {
-                            id: authorId
-                            x: 0
-                            y: appNameId.y + appNameId.height + 6
-                            text: author
-                            font.bold: false
-                            font.pixelSize: 14
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                        }
-                        Text {
-                            id: ratingId
-                            x: 0
-                            y: authorId.y + authorId.height + 4
-                            text: rating
-                            font.bold: false
-                            font.pixelSize: 14
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                        }
-                        Text {
-                            id: noofdownloadId
-                            x: 70
-                            y: ratingId.y
-                            text: noofdownload
-                            font.bold: false
-                            font.pixelSize: 14
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                        }
-                    }
+                    Row {
+                        anchors.fill: parent
+                        anchors.margins: 20
+                        spacing: 20
 
-                    Rectangle {
-                        visible: is_installed && name.length>0
-                        width: 120
-                        height: row1.height
-                        x: 500
-                        y: 0
-                        //                        anchors.right: row1.right - 20
-                        color: "#00000000"
-                        Text {
-                            anchors.fill: parent
-                            anchors.centerIn: parent
-                            text: qsTr("Installed")
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                            font.pointSize: 13
-                            font.bold: true
-                        }
-                    }
+                        // App icon
+                        Rectangle {
+                            width: 60
+                            height: 60
+                            radius: 12
+                            color: "#2A2A2A"
+                            border.color: "#404040"
+                            border.width: 1
+                            anchors.verticalCenter: parent.verticalCenter
 
-                    Rectangle {
-                        id: deleteDaAppRec1
-                        implicitWidth: 70
-                        implicitHeight: 26
-                        x: 1200
-                        y: control.y + 8
-                        radius: 13
-                        color: "red"
-                        border.color: "red"
-                        Text {
-                            y: 2
-                            text: "    X"
-                            color: "white"
-                            font.pixelSize: 20
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                appListView.currentIndex = index
-                                deleteAppName = name
-                                removeAppPopup.open()
+                            Image {
+                                id: appIcon
+                                source: iconpath || ""
+                                width: 40
+                                height: 40
+                                anchors.centerIn: parent
+                                fillMode: Image.PreserveAspectFit
+                                visible: iconpath && iconpath.length > 0
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    visible: !appIcon.visible
+                                    color: "#00D4AA20"
+                                    radius: 8
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: name.length > 0 ? name.charAt(0).toUpperCase() : "A"
+                                        font.pixelSize: 20
+                                        font.bold: true
+                                        color: "#00D4AA"
+                                        font.family: "Segoe UI"
+                                    }
+                                }
                             }
                         }
-                    }
-    
-                    SwitchDelegate {
-                        id: control
-                        objectName: appId
-                        checked: isSubscribed
-                        x: deleteDaAppRec1.x - deleteDaAppRec1.width - 100
-    
-                        indicator: Rectangle {
-                            implicitWidth: 70
-                            implicitHeight: 26
-                            x: control.width - width - control.rightPadding
-                            y: parent.height / 2 - height / 2
-                            radius: 13
-                            color: control.checked ? "#17a81a" : "transparent"
-                            border.color: control.checked ? "#17a81a" : "#cccccc"
-    
+
+                        // App info
+                        Column {
+                            width: 300
+                            spacing: 4
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            Text {
+                                text: name
+                                font.bold: true
+                                font.pixelSize: 18
+                                color: "#FFFFFF"
+                                font.family: "Segoe UI"
+                                elide: Text.ElideRight
+                                width: parent.width
+                            }
+
+                            Text {
+                                text: author
+                                font.pixelSize: 14
+                                color: "#B0B0B0"
+                                font.family: "Segoe UI"
+                                elide: Text.ElideRight
+                                width: parent.width
+                            }
+
+                            Row {
+                                spacing: 16
+                                
+                                Text {
+                                    text: rating
+                                    font.pixelSize: 12
+                                    color: "#B0B0B0"
+                                    font.family: "Segoe UI"
+                                    visible: rating && rating !== "*"
+                                }
+
+                                Text {
+                                    text: noofdownload + " downloads"
+                                    font.pixelSize: 12
+                                    color: "#B0B0B0"
+                                    font.family: "Segoe UI"
+                                    visible: noofdownload && noofdownload !== "0"
+                                }
+                            }
+                        }
+
+                        // Status badge
+                        Rectangle {
+                            visible: is_installed
+                            width: 80
+                            height: 28
+                            radius: 14
+                            color: "#00D4AA20"
+                            border.color: "#00D4AA"
+                            border.width: 1
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Installed"
+                                color: "#00D4AA"
+                                font.family: "Segoe UI"
+                                font.pixelSize: 12
+                                font.weight: Font.Medium
+                            }
+                        }
+
+                        // Spacer
+                        Item {
+                            Layout.fillWidth: true
+                            width: 50
+                        }
+
+                        // Controls
+                        Row {
+                            spacing: 12
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            // Edit button - modern design without image
                             Rectangle {
-                                x: control.checked ? parent.width - width : 0
-                                width: 26
-                                height: 26
-                                radius: 13
-                                color: control.down ? "#cccccc" : "#ffffff"
-                                border.color: control.checked ? (control.down ? "#17a81a" : "#21be2b") : "#999999"
-                            }
-                        }
-    
-                        background: Rectangle {
-                            implicitWidth: 100
-                            implicitHeight: 40
-                            visible: control.down || control.highlighted
-                            color: "transparent"
-                        }
-    
-                        onClicked: () => {
-//                                       console.log ("you just switch a digital auto app: ", control.checked)
-                                       console.log ("index : ", index)
-                                       appListView.currentIndex = index
-    
-                                       if (control.checked === true) {
-                                           control.checked = false
-                                           startSubscribePopup.message = "Starting <b>" + name + "</b> ..."
-                                           startAppBusyIndicator.visible = true
-                                           startAppBusyIndicator.running = true
-                                           startSubscribePopup.open()
-                                           appAsync.executeServices(appListView.currentIndex, name, objectName, true);                                           
-                                       }
-                                       else {
-                                           control.checked = true
-                                           unSubscribePopup.appIdString = objectName
-                                           activeAppName = name
-                                           unSubscribePopup.open()
-                                       }
-                                   }
-                    }
-    
-                    Rectangle {
-                        implicitWidth: 70
-                        implicitHeight: 26
-                        x: control.x - control.width - 30
-                        y: control.y + 8
-                        radius: 13
-                        color: "transparent"
-                        border.color: "transparent"
-                        Image {
-                            x: 20
-                            source: "../resource/icons/editicon3.png"
-                            height: 25
-                            width: 25
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                appAsync.openAppEditor(index)
-                            }
-                        }
-                    }
+                                width: 40
+                                height: 40
+                                radius: 20
+                                color: "#2A2A2A"
+                                border.color: "#404040"
+                                border.width: 1
 
-                                       
+                                // Edit icon using text/symbols
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "✎"
+                                    color: "#B0B0B0"
+                                    font.pixelSize: 16
+                                    font.family: "Segoe UI"
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onEntered: {
+                                        parent.color = "#353535"
+                                        parent.border.color = "#00D4AA40"
+                                    }
+                                    onExited: {
+                                        parent.color = "#2A2A2A"
+                                        parent.border.color = "#404040"
+                                    }
+                                    onClicked: {
+                                        appAsync.openAppEditor(index)
+                                    }
+                                }
+
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on border.color { ColorAnimation { duration: 200 } }
+                            }
+
+                            // Toggle switch - modern car-style design
+                            Rectangle {
+                                id: switchContainer
+                                width: 60
+                                height: 32
+                                radius: 16
+                                color: control.checked ? "#00D4AA" : "#2A2A2A"
+                                border.color: control.checked ? "#00D4AA" : "#404040"
+                                border.width: 1
+
+                                // Running indicator light
+                                Rectangle {
+                                    width: 6
+                                    height: 6
+                                    radius: 3
+                                    color: control.checked ? "#FFFFFF" : "transparent"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    x: control.checked ? 8 : parent.width - width - 8
+                                    opacity: control.checked ? 1 : 0
+
+                                    // Pulsing animation when active
+                                    SequentialAnimation on opacity {
+                                        running: control.checked
+                                        loops: Animation.Infinite
+                                        NumberAnimation { to: 0.3; duration: 1000 }
+                                        NumberAnimation { to: 1.0; duration: 1000 }
+                                    }
+
+                                    Behavior on x { NumberAnimation { duration: 200 } }
+                                }
+
+                                Rectangle {
+                                    id: switchHandle
+                                    width: 24
+                                    height: 24
+                                    radius: 12
+                                    color: "#FFFFFF"
+                                    border.color: control.checked ? "#00D4AA" : "#606060"
+                                    border.width: 1
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    x: control.checked ? parent.width - width - 4 : 4
+
+                                    // App icon in center
+                                    Rectangle {
+                                        width: 8
+                                        height: 8
+                                        radius: 4
+                                        color: "transparent"
+                                        border.color: control.checked ? "#00D4AA" : "#606060"
+                                        border.width: 1
+                                        anchors.centerIn: parent
+
+                                        Rectangle {
+                                            width: 2
+                                            height: 4
+                                            color: control.checked ? "#00D4AA" : "#606060"
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            y: 1
+                                        }
+                                    }
+
+                                    Behavior on x { NumberAnimation { duration: 200 } }
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
+                                }
+
+                                MouseArea {
+                                    id: control
+                                    objectName: appId
+                                    property bool checked: isSubscribed
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+
+                                    onClicked: {
+                                        appListView.currentIndex = index
+                                        if (checked === true) {
+                                            // Currently ON, user wants to turn OFF - show unsubscribe popup
+                                            control.checked = false
+                                            unSubscribePopup.appIdString = objectName
+                                            activeAppName = name
+                                            unSubscribePopup.open()
+                                        } else {
+                                            // Currently OFF, user wants to turn ON - start the app
+                                            control.checked = true
+                                            startSubscribePopup.message = "Starting <b>" + name + "</b>..."
+                                            startAppBusyIndicator.visible = true
+                                            startAppBusyIndicator.running = true
+                                            startSubscribePopup.open()
+                                            appAsync.executeServices(appListView.currentIndex, name, objectName, true);
+                                        }
+                                    }
+                                }
+
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on border.color { ColorAnimation { duration: 200 } }
+                            }
+
+                            // Delete button - modern design without image
+                            Rectangle {
+                                width: 40
+                                height: 40
+                                radius: 20
+                                color: "#FF444420"
+                                border.color: "#FF4444"
+                                border.width: 1
+
+                                // Delete icon using text
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "🗑"
+                                    color: "#FF4444"
+                                    font.pixelSize: 16
+                                    font.family: "Segoe UI"
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onEntered: {
+                                        parent.color = "#FF444440"
+                                        parent.scale = 1.1
+                                    }
+                                    onExited: {
+                                        parent.color = "#FF444420"
+                                        parent.scale = 1.0
+                                    }
+                                    onClicked: {
+                                        appListView.currentIndex = index
+                                        deleteAppName = name
+                                        removeAppPopup.open()
+                                    }
+                                }
+
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on scale { NumberAnimation { duration: 150 } }
+                            }
+                        }
+                    }
                 }
             }
+
             model: ListModel {
                 id: appListModel
                 ListElement {
@@ -651,26 +847,53 @@ Rectangle {
                 }
             }
         }
-    }
 
-    Text {
-        text: "Vehicle Apps"
-        x: 30
-        y: 30
-        font.bold: true
-        font.pointSize: 20
-        color: "#8BC34A"
-        font.family: "Arial"
-    }
-    
-    Item {
-        id: __materialLibrary__
-    }
+        // Empty state - only show when no real apps exist
+        Column {
+            anchors.centerIn: parent
+            spacing: 16
+            visible: {
+                var hasRealApps = false;
+                for (var i = 0; i < appListModel.count; i++) {
+                    var item = appListModel.get(i);
+                    if (item && item.name && item.name.length > 0 && item.name !== "No Result.") {
+                        hasRealApps = true;
+                        break;
+                    }
+                }
+                return !hasRealApps;
+            }
 
+            Rectangle {
+                width: 80
+                height: 80
+                radius: 40
+                color: "#2A2A2A"
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "📱"
+                    font.pixelSize: 32
+                }
+            }
+
+            Text {
+                text: "No Apps Installed"
+                font.pixelSize: 18
+                font.weight: Font.Medium
+                color: "#B0B0B0"
+                font.family: "Segoe UI"
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Text {
+                text: "Install apps from the Market Place to see them here"
+                font.pixelSize: 14
+                color: "#707070"
+                font.family: "Segoe UI"
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+    }
 }
-
-/*##^##
-Designer {
-    D{i:0;formeditorZoom:0.66}
-}
-##^##*/

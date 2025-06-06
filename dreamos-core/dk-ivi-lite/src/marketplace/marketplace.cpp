@@ -22,7 +22,7 @@ void ensureMarketplaceSelectionExists(const QString &marketplaceFilePath) {
         QJsonArray defaultArray;
         QJsonObject defaultMarketplace;
         defaultMarketplace["name"] = "BGSV Marketplace";
-        defaultMarketplace["marketplace_url"] = "";
+        defaultMarketplace["marketplace_url"] = "https://store-be.digitalauto.tech";
         defaultMarketplace["login_url"] = "";
         defaultMarketplace["username"] = "";
         defaultMarketplace["pwd"] = "";

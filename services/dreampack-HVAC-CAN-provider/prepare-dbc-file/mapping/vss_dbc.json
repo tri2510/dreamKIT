@@ -412,6 +412,9 @@
                       },
                       "IsOn": {
                         "datatype": "boolean",
+                        "vss2dbc": {
+                          "signal": "DAS_highBeamRequest"
+                        },
                         "description": "Indicates if light is on or off. True = On. False = Off.",
                         "type": "actuator"
                       }
@@ -429,7 +432,7 @@
                       "IsOn": {
                         "datatype": "boolean",
                         "vss2dbc": {
-                          "signal": "DAS_headlightRequest",
+                          "signal": "DAS_lowBeamRequest",
                           "transform": {
                             "mapping": [
                               {
@@ -649,9 +652,6 @@
               },
               "IsBrakeOn": {
                 "datatype": "boolean",
-                "vss2dbc": {
-                  "signal": "DAS_dynamicBrakeLightRequest"
-                },
                 "description": "Indicates if light is signaling or off. True = signaling. False = Off.",
                 "type": "actuator"
               },
@@ -1787,40 +1787,6 @@
                 "children": {
                   "Row1": {
                     "children": {
-                      "Left": {
-                        "children": {
-                          "FanSpeed": {
-                            "datatype": "uint8",
-                            "vss2dbc": {
-                              "signal": "VCRIGHT_hvacBlowerSpeedRPMReq"
-                            },
-                            "description": "Fan Speed, 0 = off. 100 = max",
-                            "max": 100,
-                            "min": 0,
-                            "type": "actuator",
-                            "unit": "percent"
-                          }
-                        },
-                        "description": "HVAC for single station in the vehicle",
-                        "type": "branch"
-                      },
-                      "Right": {
-                        "children": {
-                          "FanSpeed": {
-                            "datatype": "uint8",
-                            "vss2dbc": {
-                              "signal": "VCLEFT_hvacBlowerRPMTarget"
-                            },
-                            "description": "Fan Speed, 0 = off. 100 = max",
-                            "max": 100,
-                            "min": 0,
-                            "type": "actuator",
-                            "unit": "percent"
-                          }
-                        },
-                        "description": "HVAC for single station in the vehicle",
-                        "type": "branch"
-                      },
                       "Driver": {
                         "children": {
                           "AirDistribution": {
@@ -1835,6 +1801,9 @@
                           },
                           "FanSpeed": {
                             "datatype": "uint8",
+                            "vss2dbc": {
+                              "signal": "VCRIGHT_hvacBlowerSpeedRPMReq"
+                            },
                             "description": "Fan Speed, 0 = off. 100 = max",
                             "max": 100,
                             "min": 0,
@@ -1865,6 +1834,9 @@
                           },
                           "FanSpeed": {
                             "datatype": "uint8",
+                            "vss2dbc": {
+                              "signal": "VCLEFT_hvacBlowerRPMTarget"
+                            },
                             "description": "Fan Speed, 0 = off. 100 = max",
                             "max": 100,
                             "min": 0,
@@ -2906,23 +2878,6 @@
             "children": {
               "Row1": {
                 "children": {
-                  "Pos1": {
-                    "children": {
-                      "Position": {
-                        "datatype": "uint8",
-                        "vss2dbc": {
-                          "signal": "VCRIGHT_frontSeatTrackForward"
-                        },
-                        "description": "Seat Position, 0 = lv_0. 3 = lv_max",
-                        "max": 3,
-                        "min": 0,
-                        "type": "actuator",
-                        "unit": "percent"
-                      }
-                    },
-                    "description": "HVAC for single station in the vehicle",
-                    "type": "branch"
-                  },
                   "DriverSide": {
                     "children": {
                       "Airbag": {
@@ -3076,6 +3031,9 @@
                       },
                       "Position": {
                         "datatype": "uint16",
+                        "vss2dbc": {
+                          "signal": "VCRIGHT_frontSeatTrackForward"
+                        },
                         "description": "Seat position on vehicle x-axis. Position is relative to the frontmost position supported by the seat. 0 = Frontmost position supported.",
                         "min": 0,
                         "type": "actuator",

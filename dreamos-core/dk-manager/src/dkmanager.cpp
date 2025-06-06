@@ -18,6 +18,7 @@
 QMutex digitalAutoPrototypeMutex;
 QMutex vssMappingMutex;
 QMutex vssMappingFactoryResetMutex;
+QMutex dreamOsPatchUpdateMutex;
 
 /*
 dk_manager features:
@@ -31,6 +32,9 @@ dk_manager features:
 #if 1
 // docker mount option: -v ~/.dk:/app/.dk
 std::string DK_ROOT_DIR = "/app/.dk/";
+
+std::string DK_SWUPDATE_DIR = DK_ROOT_DIR + "dk_swupdate/";
+std::string DK_SWUPDATE_PATCH_DIR = DK_SWUPDATE_DIR + "dk_patch/";
 
 std::string DK_MARKETPLACE_DIR = DK_ROOT_DIR + "dk_marketplace/";
 std::string DK_INSTALLEDSERVICES_DIR = DK_ROOT_DIR + "dk_installedservices/";
@@ -46,6 +50,7 @@ std::string DK_VSSGEN_VMODEL   = (DK_VSSGEN_ROOT_DIR + "vehicle_gen/");
 #endif
 
 // std::string DK_ROOT_DIR = "/usr/bin/dreamkit/";
+std::string DK_SYSTEM_CONFIG_FILE = (DK_MGR_ROOT_DIR + "dk_system_cfg.json");
 std::string DK_LOG_FOLDER = (DK_MGR_ROOT_DIR + "log/");
 std::string DK_LOG_CMD_FOLDER = (DK_LOG_FOLDER + "cmd/");
 std::string DK_DOWNLOAD_FOLDER = (DK_MGR_ROOT_DIR + "download/");
@@ -207,6 +212,22 @@ void DkManger::InitDigitalautoFolder()
         qDebug() << __func__ << __LINE__ << " cmd = " << QString::fromStdString(cmd);
         system(cmd.data());
         QThread::msleep(100);
+
+        if (!FileUtils::fileExists(DK_SYSTEM_CONFIG_FILE)) {
+            cmd.clear();
+            cmd = "echo \"{\\n"
+            "    \\\"xip\\\": {\\n"
+            "        \\\"ip\\\": \\\"192.168.56.48\\\"\\n"
+            "    },\\n"
+            "    \\\"vip\\\": {\\n"
+            "        \\\"ip\\\": \\\"192.168.56.49\\\",\\n"
+            "        \\\"user\\\": \\\"root\\\",\\n"
+            "        \\\"pwd\\\": \\\"\\\"\\n"
+            "    }\\n"
+            "}\" > ";
+            cmd += DK_SYSTEM_CONFIG_FILE;
+            system(cmd.data());
+        }
     }
 }
 

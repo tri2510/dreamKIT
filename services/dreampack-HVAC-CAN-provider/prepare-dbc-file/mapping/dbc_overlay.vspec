@@ -349,7 +349,7 @@ Vehicle.Body.Lights.Beam.Low.IsOn:
   type: actuator
   datatype: boolean
   vss2dbc:
-    signal: DAS_headlightRequest
+    signal: DAS_lowBeamRequest
     transform:
        mapping:
         - from: true
@@ -369,11 +369,11 @@ Vehicle.Body.Lights.Hazard.IsSignaling:
         - from: false
           to: DAS_REQUEST_HAZARDS_OFF
 
-Vehicle.Body.Lights.IsBrakeOn:
+Vehicle.Body.Lights.Beam.High.IsOn:
   type: actuator
   datatype: boolean
   vss2dbc:
-    signal: DAS_dynamicBrakeLightRequest
+    signal: DAS_highBeamRequest
     transform:
        mapping:
         - from: true
@@ -381,19 +381,19 @@ Vehicle.Body.Lights.IsBrakeOn:
         - from: false
           to: DAS_BRAKELIGHT_REQUEST_OFF
 
-Vehicle.Cabin.Seat.Row1.Pos1.Position:
+Vehicle.Cabin.Seat.Row1.DriverSide.Position:
   datatype: int8
   type: actuator
   vss2dbc:
     signal: VCRIGHT_frontSeatTrackForward
 
-Vehicle.Cabin.HVAC.Station.Row1.Left.FanSpeed:
+Vehicle.Cabin.HVAC.Station.Row1.Driver.FanSpeed:
   datatype: int8
   type: actuator
   vss2dbc:
     signal: VCRIGHT_hvacBlowerSpeedRPMReq
 
-Vehicle.Cabin.HVAC.Station.Row1.Right.FanSpeed:
+Vehicle.Cabin.HVAC.Station.Row1.Passenger.FanSpeed:
   datatype: int8
   type: actuator
   vss2dbc:

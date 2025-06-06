@@ -1,241 +1,54 @@
-# Require library:
-https://github.com/socketio/socket.io-client-cpp
+# dk_app_python_template
 
+> Info: This repo provides a guideline to build image for dk_manager app. dk_manager is the core app to manage the operation of dreamkit system.
 
-## Build With CMake
-Use `git clone --recurse-submodules https://github.com/socketio/socket.io-client-cpp.git` to clone your local repo.
-
-Run `cmake  ./`
-
-Run `make install` (if makefile generated) or open generated project (if project file generated) to build.
-
-Maybe you will need to run `sudo make install`
-
-# Important parameter
-- kURL "https://kit.digitalauto.tech"
-
-- DK_BOARD_UNIQUE_SERIAL_NUMBER_FILE `/proc/device-tree/serial-number`
-- DK_ECU_LIST `/opt/data/EcuList.json`
-- DK_CURRENT_VSS_VERSION `vss3.0`
-- DK_VCU_USERNAME `sdv-orin`
-- DK_ZC_USERNAME `bluebox`
-
-# Root folder layout
-
-ROOT_DIR: `/usr/bin/dreamkit/`
-- serial-number
-- log
-    - requestdownload.log
-    - cmd
-- download
-- vssmapping
-    - vssmapping_global_config.json
-    - vssmapping_deploy_config.json
-    - vssmapping_dbc_can_channels.json
-    - vssmapping_overlay.vspec
-    - vss_dbc.json
-    - dbc_default_values.json
-    - vspec2json.log
-    - gen_vehicle_model.log
-    - vehicle_databroker.log
-    - dbcfeeder.log
-    - stop_kuksa_feeder_script.sh
-    - start_kuksa_feeder_script.sh
-    - vss_specs/
-    - vehicle-model-generator/
-- prototypes/
-    - prototypes.json
-    - supportedvssapi.json
-
-
-# Supported remote cmd
-
-1. `deploy_request`
-    > DeploymentHandler(m_data); 
-2. `factory_reset`
-    > FactoryResetHandler(m_data);
-3. `execute_cmd`
-    > ExecuteCmd(m_data);
-4. `vss_mapping_factory_reset`
-    > vssMappingInfo2Client.clear();
-
-    > bool ret = VssMappingFactoryResetHandler(m_data, vssMappingInfo2Client);
-
-    Then response to requester
-5. `vss_mapping`
-    > vssMappingInfo2Client.clear();
-
-    > bool ret = VssMappingHandler(m_data, vssMappingInfo2Client);
-    
-    Then response to requester
-# Main actions
-### `void InitDigitalautoFolder()`
-Create neccesary dirs and child dirs
-
-### `void DkManger::BroadCastGlobalStatus()`
-try to connect to https://google.com then update online status
-
-### `void MessageToKitHandler::DeploymentHandler(message::ptr const &data)`
-```js
-data: {
-    prototype: {
-        id: 'string',
-        name: 'string',
-    },
-    code: 'string',
-    convertedCode: 'string',
-}
+## Prerequisites:
+Git clone dk-manger repo into src folder before run docker build.  
 ```
-1. Save convertedCode to file: `[root_dir]/prototypes/[prototype_id]/main.py`
-2. Append prototype to prototype list at file: `[root_dir]/prototypes/prototypes.json` 
-
-
-### std::string runLinuxCommand(const char *cmd)
-```c++
-std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
+cd src
+git clone https://github.com/ppa2hc/dk-manager.git
 ```
 
-### void MessageToKitHandler::StartRunTimeEnv()
-- StartVehicleDatabroker();
-- StartKuksaFeeder();
-
-### void MessageToKitHandler::StartVehicleDatabroker()
-Start vehicledatabroker with dapr
-```c++
-std::string cmd = "> " + DK_DATABROKER_LOG + ";";
-cmd += "sudo -u " + DK_VCU_USERNAME + " dapr run --app-id vehicledatabroker --app-protocol grpc --resources-path /home/" + DK_VCU_USERNAME + "/.dapr/components --config /home/" + DK_VCU_USERNAME + "/.dapr/config.yaml --app-port 6111 -- docker run --rm --init --name vehicledatabroker -e KUKSA_DATA_BROKER_METADATA_FILE=" + DK_VSS_VSPECS_JSON + " -e KUKSA_DATA_BROKER_PORT=6111 -e 50001 -e 3500 -v " + DK_VSS_VSPECS_JSON + ":" + DK_VSS_VSPECS_JSON + " --network host ghcr.io/eclipse/kuksa.val/databroker:0.3.0 > ";
-cmd += DK_DATABROKER_LOG + " 2>&1 &";
-system(cmd.c_str());
-QThread::sleep(3);
+## Build docker image
+Local-arch build:  
+```
+docker build -t dk_manager:latest --file Dockerfile .
+```
+Run local:  
+```
+docker stop dk_manager; docker rm dk_manager; docker run -d -it --name dk_manager -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker  dk_manager:latest
 ```
 
-### void MessageToKitHandler::StartKuksaFeeder()
-```c++
-if (m_orchestrator)
-{
-    // check vehicledatabroker status before start kuksa feeder
-    std::string cmd = "docker inspect --format '{{json .State.Running}}' vehicledatabroker";
-    std::string ret = runLinuxCommand(cmd.c_str());
-    QString databrokerStatus = QString::fromStdString(ret);
-    databrokerStatus.remove(QChar::Null);
-    databrokerStatus.replace("\n", "");
-    qDebug() << "------ vehicledatabroker status : " << databrokerStatus;
-    if (databrokerStatus == "true")
-    {
-        qDebug() << "------ Send cmd to start kuksa-feeder startup script on zonecontroller";
-        m_orchestrator->SendCmd("zonecontroller", "start_kuksa_feeder_script");
-    }
-}
+Multi-arch build and push to docker hub:  
+```
+docker buildx create --name dk_multiarch_build_dk_manager --use
+docker buildx use dk_multiarch_build_dk_manager
+docker buildx build --platform linux/amd64,linux/arm64 -t phongbosch/dk_manager:latest --push -f Dockerfile .
 ```
 
-### void MessageToKitHandler::StopRuntimeEnv()
-```c++
-{
-    StopAllDigialAutoApps();
-    StopVehicleDatabroker();
-    StopKuksaFeeder();
-}
+Use Dockerfile.Fast to build faster. This uses prebuilt socketio client.  
+```
+docker buildx build --platform linux/amd64,linux/arm64 -t phongbosch/dk_manager:latest --push -f Dockerfile.Fast .
 ```
 
-### void MessageToKitHandler::StopRuntimeEnv()
-```c++
-// read jsonAppList from .../prototypes.json file
-for (const auto obj : jsonAppList)
-{
-    QString appId = obj.toObject().value("id").toString();
-    std::string cmd = "dapr stop " + appId.toStdString();
-    qDebug() << "dapr cmd : " << QString::fromStdString(cmd);
-    std::string ret = runLinuxCommand(cmd.c_str());
-}
+Run from docker hub
+```
+docker pull phongbosch/dk_manager:latest
+docker stop dk_manager; docker rm dk_manager; docker run -d -it --name dk_manager -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker  phongbosch/dk_manager:latest
 ```
 
-### void MessageToKitHandler::StopVehicleDatabroker()
-```c++
-{
-    qDebug() << "stop vehicledatabroker on vcu";
-    runLinuxCommand("docker stop vehicledatabroker");
-    QThread::sleep(2);
-    runLinuxCommand("dapr stop vehicledatabroker");
-    QThread::sleep(2);
-}
+## Result after bootup
+```shell
+Start dk_manager
+dk-manager verion 1.0.0 !!!
+DkManger 96  : setup socket.io
+InitDigitalautoFolder 163
+InitDigitalautoFolder 207  cmd =  "mkdir -p /app/.dk/dk_manager/log/cmd/ /app/.dk/dk_manager/prototypes/ /app/.dk/dk_manager/download/ /app/.dk/dk_manager/vssmapping/ /app/.dk/dk_manager/vssmapping/ /app/.dk/dk_marketplace/ /app/.dk/dk_installedservices/ /app/.dk/dk_installedapps/;rm /app/.dk/dk_manager/log/cmd/*;touch /app/.dk/dk_manager/vssmapping/stop_kuksa_feeder_script.sh;touch /app/.dk/dk_manager/vssmapping/start_kuksa_feeder_script.sh;echo \"[]\" > /app/.dk/dk_installedservices/installedservices.json;echo \"[]\" > /app/.dk/dk_installedapps/installedapps.json;echo 'Vehicle:\n  type: branch\n\n' > /app/.dk/dk_manager/vssmapping/vssmapping_overlay.vspec;echo \"[]\" > /app/.dk/dk_manager/prototypes/supportedvssapi.json;echo \"[]\" > /app/.dk/dk_manager/vssmapping/vssmapping_dbc_can_channels.json;echo \"{}\" > /app/.dk/dk_manager/vssmapping/dbc_default_values.json;touch /app/.dk/dk_manager/prototypes/prototypes.json;chmod 777 /app/.dk/dk_manager/prototypes/prototypes.json;chmod 777 -R /app/.dk/dk_manager/prototypes/;chmod 777 -R /app/.dk/dk_manager/vssmapping/;"
+rm: cannot remove '/app/.dk/dk_manager/log/cmd/*': No such file or directory
+InitUserInfo 158  : DK_VCU_USERNAME =  "sdv-orin"
+URL:  https://kit.digitalauto.tech
+[2025-05-21 02:40:58] [connect] Successful connection
+[2025-05-21 02:40:58] [connect] WebSocket Connection 168.63.44.238:443 v-2 "WebSocket++/0.8.2" /socket.io/?EIO=4&transport=websocket&t=1747795257 101
+get_dreamkit_code 79 create DreamkitID in hex:  "f1ae5bb05afc0cfc"
+get_dreamkit_code 92 serialNo:  "5afc0cfc"
 ```
-
-
-### void MessageToKitHandler::StopKuksaFeeder()
-```c++
-{
-    if (m_orchestrator)
-    {
-        qDebug() << "Send cmd to stop kuksa-feeder on zonecontroller";
-        // send command to zonecontroller
-        m_orchestrator->SendCmd("zonecontroller", "stop_kuksa_feeder_script");
-    }
-}
-```
-
-
-### void MessageToKitHandler::ExecuteCmd(message::ptr const &data)
-1. Execute cmd by `system(cmd + ' > ' + logFile + ' 2>&1')`
-2. Read logFile
-3. Send response back with below format
-```j
-emit("messageToKit-kitReply", {
-    request_from: '',
-    cmd: '',
-    result: '',
-});
-```
-### bool MessageToKitHandler::VssMappingHandler(message::ptr const &data, QString &vssMappingInfo2Client)
-Provide detail later
-
-### bool MessageToKitHandler::GenerateVehicleModel(QString &vssMappingInfo2Client)
-Provide detail later
-
-### bool MessageToKitHandler::GenerateVssJson(QString &vssMappingInfo2Client)
-Provide detail later
-
-
-### Run linux cmd
-
-```c++
-std::string runLinuxCommand(const char *cmd)
-{
-    std::array<char, 1024 * 10> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd, "r"), pclose);
-    if (!pipe)
-    {
-        throw std::runtime_error("popen() failed!");
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
-    {
-        result += buffer.data();
-    }
-    return result;
-}
-```
-
-### void DkManger::OnDownloadFileRequest(std::string const &name, message::ptr const &data, bool hasAck, message::list &ack_resp)
-> Using system() to execute wget -0 [Folder]/[FileName] -o [DK_DOWNLOAD_LOGFILE]
-
-```c++
-{
-    qDebug() << __func__ << __LINE__;
-
-    if (data->get_flag() == message::flag_object)
-    {
-        std::string cmd;
-        cmd.clear();
-        cmd = "> " + DK_DOWNLOAD_LOGFILE;
-        system(cmd.data()); // clear old log,
-
-        std::string filename = data->get_map()["filename"]->get_string();
-        std::string url = data->get_map()["url"]->get_string();
-
-        cmd.clear();
-        cmd = "wget -O " + DK_DOWNLOAD_FOLDER + filename + " " + url + " -o " + DK_DOWNLOAD_LOGFILE;
-        qDebug() << __func__ << __LINE__ << " cmd : " << QString::fromStdString(cmd);
-        system(cmd.data());
-    }
-}```
-

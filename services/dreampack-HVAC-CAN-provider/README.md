@@ -132,11 +132,11 @@ kuksa-client grpc://192.168.56.48:55555
 #
 # Supported API
 setTargetValue Vehicle.Body.Lights.Beam.Low.IsOn true/false
+setTargetValue Vehicle.Body.Lights.Beam.High.IsOn true/false
 setTargetValue Vehicle.Body.Lights.Hazard.IsSignaling true/false
-setTargetValue Vehicle.Body.Lights.IsBrakeOn true/false
-setTargetValue Vehicle.Cabin.Seat.Row1.Pos1.Position {0-3}
-setTargetValue Vehicle.Cabin.HVAC.Station.Row1.Right.FanSpeed {0-100}
-setTargetValue Vehicle.Cabin.HVAC.Station.Row1.Left.FanSpeed {0-100}
+setTargetValue Vehicle.Cabin.Seat.Row1.DriverSide.Position {0-3}
+setTargetValue Vehicle.Cabin.HVAC.Station.Row1.Passenger.FanSpeed {0-100}
+setTargetValue Vehicle.Cabin.HVAC.Station.Row1.Driver.FanSpeed {0-100}
 
 #
 # Request the LowBeam state
@@ -155,39 +155,40 @@ vcan0  3E9   [8]  01 00 00 00 00 00 00 00
 
 ## S32G - Build and Test
 
-### Prepare the docker image (arm46)
+### Prepare the docker image (arm64)
 ```shell
-# Build for arm64
+# Locally build for arm64
+docker buildx create --name dk_service_can_provider_build --use
+docker buildx use dk_service_can_provider_build
 docker buildx build --platform linux/arm64 -t dk_service_can_provider:arm64 --load .
-# Save docker image
-docker save -o dk_service_can_provider.tar dk_service_can_provider:arm64
-# Copy to S32G
-scp dk_service_can_provider.tar root@192.168.56.49:~/sdvdemo/docker
 ```
 
 ### Deploy and run
 ```shell
-cd ~/sdvdemo/docker
-# Load the docker image
-docker load -i dk_service_can_provider.tar
-# Run the docker
-docker stop dk_service_can_provider; docker rm dk_service_can_provider
-docker run --restart unless-stopped -d --name dk_service_can_provider --net=host -e LOG_LEVEL=INFO  -e CAN_PORT=can1 dk_service_can_provider:arm64
+# Interact with Orin - Update the Docker Local registry
+docker tag dk_service_can_provider:arm64 192.168.56.48:5000/dk_service_can_provider:arm64
+docker push 192.168.56.48:5000/dk_service_can_provider:arm64
 
-# Remove (optional)
-docker image rm -f dk_service_can_provider:arm64
+# Interact with S32G - pull the docker images from local host at Orin
+sshpass -p '' ssh -o StrictHostKeyChecking=no root@192.168.56.49 'docker pull 192.168.56.48:5000/dk_service_can_provider:arm64 ; mkdir -p ~/.dk/dk_installedservices'
+sshpass -p '' ssh -o StrictHostKeyChecking=no root@192.168.56.49 'docker image prune -f'
+# Interact with S32G - run the docker container
+sshpass -p '' ssh -o StrictHostKeyChecking=no root@192.168.56.49 'docker kill dk_service_can_provider;docker rm dk_service_can_provider'
+sshpass -p '' ssh -o StrictHostKeyChecking=no root@192.168.56.49 'docker run -d -it --name dk_service_can_provider --log-opt max-size=10m --log-opt max-file=3 --network host --privileged 192.168.56.48:5000/dk_service_can_provider:arm64'
+# Interact with S32G - check the running
+sshpass -p '' ssh -o StrictHostKeyChecking=no root@192.168.56.49 'docker ps'
+sshpass -p '' ssh -o StrictHostKeyChecking=no root@192.168.56.49 'docker logs dk_service_can_provider'
 ```
 
 ### Check CAN Bus
 
 ```shell
 #
-#Test the CAN connection
-cd ~/sdvdemo/tool
+# Test the CAN connection
 # LowBeam ~ On
-./cansend can1 3E9#0000000000000000
+cansend can1 3E9#0000000000000000
 # LowBeam ~ Off
-./cansend can1 3E9#0100000000000000
+cansend can1 3E9#0100000000000000
 ```
 
 

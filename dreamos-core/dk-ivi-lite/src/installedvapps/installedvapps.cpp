@@ -159,14 +159,22 @@ Q_INVOKABLE void VappsAsync::initInstalledVappsFromDB()
         appInfo.name = jsonObject["name"].toString();
 
         // Extract author from 'createdBy' object
-        QJsonObject createdBy = jsonObject["createdBy"].toObject();
-        if (createdBy.contains("descriptor")) {
-            QJsonDocument descriptorDoc = QJsonDocument::fromJson(createdBy["descriptor"].toString().toUtf8());
-            QJsonObject descriptorObj = descriptorDoc.object();
-            appInfo.author = descriptorObj["name"].toString();
-        } else if (createdBy.contains("fullName")) {
-            appInfo.author = createdBy["fullName"].toString();
-        } else {
+        // QJsonObject createdBy = jsonObject["createdBy"].toObject();
+        // if (createdBy.contains("descriptor")) {
+        //     QJsonDocument descriptorDoc = QJsonDocument::fromJson(createdBy["descriptor"].toString().toUtf8());
+        //     QJsonObject descriptorObj = descriptorDoc.object();
+        //     appInfo.author = descriptorObj["name"].toString();
+        // } else if (createdBy.contains("fullName")) {
+        //     appInfo.author = createdBy["fullName"].toString();
+        // } else {
+        //     appInfo.author = "Unknown";
+        // }
+
+        QJsonObject storeId = jsonObject["storeId"].toObject();
+        if (storeId.contains("name")) {
+            appInfo.author = storeId["name"].toString();
+        } 
+        else {
             appInfo.author = "Unknown";
         }
 
@@ -252,7 +260,7 @@ Q_INVOKABLE void VappsAsync::executeServices(int appIdx, const QString name, con
         QString uiParams = getUiParam(runtimecfgfile);
 
         // start digital.auto app
-        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v /home/" + DK_VCU_USERNAME + "/.dk/dk_installedapps/" + appId + ":/app/runtime -v /home/" + DK_VCU_USERNAME + "/.dk/dk_vssgeneration/vehicle_gen:/home/vss/vehicle_gen:ro --network dk_network " + safeParams + audioParams + uiParams + installedVappsList[appIdx].packagelink;
+        cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v /home/" + DK_VCU_USERNAME + "/.dk/dk_installedapps/" + appId + ":/app/runtime -v /home/" + DK_VCU_USERNAME + "/.dk/dk_vssgeneration/vehicle_gen:/home/vss/vehicle_gen:ro --network host " + safeParams + audioParams + uiParams + installedVappsList[appIdx].packagelink;
         qDebug() << cmd;
         system(cmd.toUtf8());
 
@@ -401,6 +409,12 @@ Q_INVOKABLE void VappsAsync::removeServices(const int index)
     //initInstalledVappsFromDB();
     QString mpDataPath = DK_INSTALLED_APPS_FOLDER + "installedapps.json";
     removeObjectById(mpDataPath, installedVappsList[index].id);
+
+    QString cmd;
+    QString appId = installedVappsList[index].id;
+    cmd = "docker kill " + appId + ";docker rm " + appId;
+    qDebug() << cmd;
+    system(cmd.toUtf8());
 }
 
 void VappsAsync::handleResults(QString appId, bool isStarted, QString msg)

@@ -4,31 +4,23 @@ import QtQuick.Layouts
 import QtQuick.Controls.Material
 import "../resource/customwidgets"
 import MarketplaceAsync 1.0
-//import Qt5Compat.GraphicalEffects
 
 Rectangle {
     id: marketplace_page
     visible: true
-    layer.enabled: true
-    //width: 778
-    //height: 1025
     width: parent.width
     height: parent.height
 
-//     property alias searchTextInput: searchTextInput
-
     property int numbeOfInstalledApps: 0
     property int numbeOfSearchedApps: 0
-
     property int installAppIndex: -1
     property bool isSearchTextInputEmpty: true
     property int removeAppIndex: -1
-
     property string activeAppName: ""
 
     Rectangle {
         id: bg
-        color: "#212121"
+        color: "#0F0F0F"
         anchors.fill: parent
     }
 
@@ -50,14 +42,10 @@ Rectangle {
                 return
             }
 
-            // clear the searched list
             appListModel.clear()
-
-            // reset input search text editor
-            searchTextInput.text = "Search"
+            searchTextInput.text = "Search apps and services..."
             isSearchTextInputEmpty = true
 
-            //                console.log("appListMenu.currentIndex: ", appListMenu.currentIndex)
             if (appListMenu.currentIndex === 0) {
                 appAsync.searchAppFromStore("vehicle")
             }
@@ -67,8 +55,6 @@ Rectangle {
             else {
                 appAsync.searchAppFromStore("XXXXXX")
             }
-
-            //          appListMenu.currentIndex = -1
         }
     }
 
@@ -83,8 +69,6 @@ Rectangle {
                 return
             }
 
-            //             console.log(appListView.currentIndex)
-
             let matchApp = appListModel.get(appListView.currentIndex)
             if(matchApp && !matchApp.is_installed) {
                 activeAppName = matchApp.name
@@ -93,7 +77,6 @@ Rectangle {
                     installAppPopup.open()
                 }
             }
-            //             appListView.currentIndex = -1
         }
     }
 
@@ -108,72 +91,52 @@ Rectangle {
             console.log("onEditingFinished finish")
             Qt.inputMethod.hide();
             if (searchTextInput.text === "") {
-                searchTextInput.text = "Search"
+                searchTextInput.text = "Search apps and services..."
                 isSearchTextInputEmpty = true
-                console.log("onEditingFinished, isSearchTextInputEmpty = ", isSearchTextInputEmpty)
                 return
-            } else {
-                // searchApp()
             }
-
             isSearchTextInputEmpty = false
-            console.log("onEditingFinished, isSearchTextInputEmpty = ", isSearchTextInputEmpty)
         }
+        
         function onActiveFocusChanged(activeFocus) {
             if (activeFocus) {
-                if(searchTextInput.text === "Search") {
+                if(searchTextInput.text === "Search apps and services...") {
                     searchTextInput.text = "";
                 }
-
-                console.log("searchTextInput Gained focus");
-            } else {
-                console.log("searchTextInput Lost focus");
             }
         }
     }
 
     MarketplaceAsync {
         id: appAsync
-        onClearAppInfoToAppList: () =>
-        {
+        onClearAppInfoToAppList: () => {
             appListModel.clear()
         }
 
         onAppendAppInfoToAppList: (name, author, rating, noofdownload, icon, isInstalled) => {
-                                      console.log(name, author, rating, noofdownload, icon)
-                                      if (name === "") {
-                                          appListModel.append({name: "No Result.", author: "", rating: "", noofdownload: "", iconpath: "", is_installed: false})
-                                      }
-                                      else {
-                                          appListModel.append({
-                                                                  name: name,
-                                                                  author: author,
-                                                                  rating: rating+"*",
-                                                                  noofdownload: noofdownload,
-                                                                  iconpath: icon,
-                                                                  is_installed: isInstalled
-                                                              })
-                                      }
-                                  }
+            if (name === "") {
+                appListModel.append({name: "No Result.", author: "", rating: "", noofdownload: "", iconpath: "", is_installed: false})
+            } else {
+                appListModel.append({
+                    name: name,
+                    author: author,
+                    rating: rating+"*",
+                    noofdownload: noofdownload,
+                    iconpath: icon,
+                    is_installed: isInstalled
+                })
+            }
+        }
 
-        onAppendLastRowToAppList:  (noOfApps) => {
-                                       console.log("onAppendLastRowToAppList")
-                                       numbeOfSearchedApps = noOfApps
-                                       appListModel.append({name: "", author: "", rating: "", noofdownload: "", iconpath: ""})
-                                       appListView.positionViewAtBeginning()
-                                   }
+        onAppendLastRowToAppList: (noOfApps) => {
+            numbeOfSearchedApps = noOfApps
+            appListModel.append({name: "", author: "", rating: "", noofdownload: "", iconpath: ""})
+            appListView.positionViewAtBeginning()
+        }
 
         onHandleFailureAppInstallation: (type, msg) => {
-                                            console.log("onHandleFailureAppInstallation")
-                                            if (type === "alreadyinstalled") {
-                                                handleFailureInstallAppMsg = msg
-                                            }
-                                            else if (type === "notAvailable") {
-                                                handleFailureInstallAppMsg = msg
-                                            }
-
-                                            notSupportedFeaturePopup.open()
-                                        }
+            // Handle failure - you might want to add a popup here
+        }
 
         onClearMarketplaceNameList: () => {
             marketplace_comboBox_model.clear();
@@ -197,228 +160,327 @@ Rectangle {
         modal: true
 
         onAccepted: {
-            console.log("install onAccepted clicked")
             appAsync.installApp(installAppIndex)
             installAppPopup.close()
             appListView.currentIndex = -1
             notifArea.visible = true
         }
+        
         onRejected: {
-            console.log("install rejected clicked")
             installAppPopup.close()
             appListView.currentIndex = -1
         }
 
-        contentItem: Rectangle {
+        background: Rectangle {
+            color: "#1A1A1A"
+            radius: 16
+            border.color: "#2A2A2A"
+            border.width: 1
+        }
+
+        contentItem: Column {
             anchors.fill: parent
-            width: 500
-            height: 400
-            color: "#676767"
-            //            border.width: 1
-            //            border.color: "white"
+            anchors.margins: 32
+            spacing: 24
 
-            Rectangle {
-                x: 0
-                y: 0
+            Text {
                 width: parent.width
-                height: 300
-                color: "#00000000"
-
-                Text {
-                    width: parent.width
-                    height: 200
-                    anchors.centerIn: parent
-                    text: `Confirm install app <b>${activeAppName}</b>?`
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 16
-                    wrapMode: Text.WordWrap
-                }
+                text: `Confirm install app <b>${activeAppName}</b>?`
+                horizontalAlignment: Text.AlignHCenter
+                color: "white"
+                font.family: "Segoe UI"
+                font.pixelSize: 16
+                wrapMode: Text.WordWrap
             }
 
-            Rectangle {
-                id: btnCancel
-                x: 40
-                y: 300
-                width: 160
-                height: 80
-                color: "#00000000"
+            Row {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 24
 
-                Text {
-                    anchors.fill: parent
-                    anchors.centerIn: parent
-                    text: qsTr("Cancel")
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 18
-                    font.bold: true
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        installAppPopup.rejected()
+                Button {
+                    text: "Cancel"
+                    onClicked: installAppPopup.rejected()
+                    background: Rectangle {
+                        color: "#2A2A2A"
+                        radius: 12
+                        border.color: "#404040"
+                        border.width: 1
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: "#B0B0B0"
+                        font.family: "Segoe UI"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
-            }
 
-            Rectangle {
-                id: btnAccept
-                width: 160
-                height: 80
-                x: 300
-                y: 300
-                color: "#00000000"
-
-                Text {
-                    anchors.fill: parent
-                    anchors.centerIn: parent
-                    text: qsTr("Install")
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    color: "white"
-                    font.pointSize: 18
-                    font.bold: true
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        installAppPopup.accepted()
+                Button {
+                    text: "Install"
+                    onClicked: installAppPopup.accepted()
+                    background: Rectangle {
+                        color: "#00D4AA"
+                        radius: 12
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        font.family: "Segoe UI"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
             }
         }
     }
 
+    // Main content area
     Rectangle {
         id: searchAppRec
-        x: 38
-        y: 0
-        width: parent.width
-        height: parent.height
-        clip: true
+        anchors.fill: parent
+        anchors.margins: 32
         color: "transparent"
-        border.color: "#d7d9cc"
-        border.width: 0
-        visible: true
 
+        // Search area
+        Rectangle {
+            id: search_area
+            x: 0
+            y: 0
+            width: 380
+            height: 56
+            color: "#1A1A1A"
+            radius: 28
+            border.color: "#2A2A2A"
+            border.width: 1
+
+            Row {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 12
+
+                CustomBtn1 {
+                    id: searchAppButton
+                    width: 40
+                    height: 40
+                    btnIconSource: "../resource/search.png"
+                    iconWidth: 20
+                    iconHeight: 20
+                    colorDefault: "#00D4AA20"
+                    colorClicked: "#00D4AA40"
+                    btn_border_color: "transparent"
+                    btn_background_color: "transparent"
+                    btn_color_overlay: "#00D4AA40"
+                    onClicked: searchApp()
+                }
+
+                TextInput {
+                    id: searchTextInput
+                    width: 300
+                    height: 40
+                    text: "Search apps and services..."
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.pixelSize: 16
+                    horizontalAlignment: Text.AlignLeft
+                    verticalAlignment: Text.AlignVCenter
+                    font.family: "Segoe UI"
+                    color: activeFocus ? "#FFFFFF" : "#707070"
+                    clip: true
+                }
+            }
+        }
+
+        // Tab menu
         ListView {
-            id: appListView
-            property int installPopupX: 0
-            property int installPopupY: 0
+            id: appListMenu
+            x: 0
+            y: 80
+            width: parent.width
+            height: 60
+            orientation: ListView.Horizontal
             currentIndex: -1
-            x: 19
-            y: 143
-            width: parent.width - 100
-            height: parent.height - 100
-            clip: true
+            spacing: 24
 
-            function setActiveIndex(index) {
-                appListView.forceActiveFocus()
-                appListView.currentIndex = index
+            highlight: Rectangle {
+                color: "transparent"
+                Rectangle {
+                    width: parent.width
+                    height: 3
+                    anchors.bottom: parent.bottom
+                    color: "#00D4AA"
+                    radius: 1.5
+                }
             }
 
             delegate: Item {
-                id: appListViewItem
-                x: 5
-                width: appListView.width
-                height: 90
-                Row {
-                    id: row1
-                    spacing: 20
-                    width: appListViewItem.width
-                    height: 50
+                width: 180
+                height: 60
 
-                    Image {
-                        //                        id: imageId
-                        source: iconpath
-                        width: row1.height
-                        height: row1.height
-                    }
-
-                    Rectangle {
-                        x: row1.height + 30
-                        height: appListViewItem.height
-                        width: parent.width
-                        color: "#00000000"
-                        clip: true
-                        Text {
-                            id: appNameId
-                            x: 0
-                            y: 0
-                            text: name
-                            font.bold: true
-                            font.pixelSize: 20
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                        }
-                        Text {
-                            id: authorId
-                            x: 0
-                            y: appNameId.y + appNameId.height + 6
-                            text: author
-                            font.bold: false
-                            font.pixelSize: 14
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                        }
-                        Text {
-                            id: ratingId
-                            x: 0
-                            y: authorId.y + authorId.height + 4
-                            text: rating
-                            font.bold: false
-                            font.pixelSize: 14
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                        }
-                        Text {
-                            id: noofdownloadId
-                            x: 70
-                            y: ratingId.y
-                            text: noofdownload
-                            font.bold: false
-                            font.pixelSize: 14
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                        }
-                    }
-
-                    Rectangle {
-                        visible: is_installed && name.length>0
-                        width: 120
-                        height: row1.height
-                        x: 500
-                        y: 0
-                        //                        anchors.right: row1.right - 20
-                        color: "#00000000"
-                        Text {
-                            anchors.fill: parent
-                            anchors.centerIn: parent
-                            text: qsTr("Installed")
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            color: "#90ebebeb"
-                            font.family: "Arial"
-                            font.pointSize: 13
-                            font.bold: true
-                        }
-                    }
+                Text {
+                    text: name
+                    font.pointSize: 16
+                    font.family: "Segoe UI"
+                    font.weight: appListMenu.currentIndex === index ? Font.Medium : Font.Normal
+                    color: appListMenu.currentIndex === index ? "#00D4AA" : "#B0B0B0"
+                    anchors.centerIn: parent
                 }
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: (mouse) => {
-                                   appListView.setActiveIndex(index)
-                                   //                        appListView.forceActiveFocus()
-                                   //                        appListView.currentIndex = index
-                                   //                        var positionInPopup = mapToItem(content, mouse.x, mouse.y)
-                                   //                        appListView.installPopupX = positionInPopup.x
-                                   //                        appListView.installPopupY = positionInPopup.y - 50
-                               }
+                    onClicked: {
+                        appListMenu.currentIndex = index
+                    }
                 }
             }
+
+            model: ListModel {
+                ListElement { name: "Vehicle App" }
+                ListElement { name: "Vehicle Service" }
+            }
+        }
+
+        // App grid
+        GridView {
+            id: appListView
+            x: 0
+            y: 160
+            width: parent.width
+            height: parent.height - 180
+            currentIndex: -1
+            cellWidth: Math.floor(width / Math.floor(width / 200))
+            cellHeight: 280
+            clip: true
+
+            function setActiveIndex(index) {
+                currentIndex = index
+            }
+
+            delegate: Item {
+                width: appListView.cellWidth
+                height: appListView.cellHeight
+                visible: name.length > 0 && name !== "No Result." && iconpath && iconpath.length > 0
+
+                Rectangle {
+                    id: appCard
+                    width: parent.width - 16
+                    height: parent.height - 16
+                    anchors.centerIn: parent
+                    color: appListView.currentIndex === index ? "#00D4AA15" : "#1A1A1A"
+                    radius: 20
+                    border.color: appListView.currentIndex === index ? "#00D4AA" : "#2A2A2A"
+                    border.width: 1
+
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 20
+                        spacing: 12
+
+                        // App Icon
+                        Rectangle {
+                            width: 100
+                            height: 100
+                            radius: 20
+                            color: "#FFFFFF"
+                            anchors.horizontalCenter: parent.horizontalCenter
+
+                            Image {
+                                id: appIcon
+                                source: iconpath || "../resource/default-app-icon.png"
+                                width: 80
+                                height: 80
+                                anchors.centerIn: parent
+                                fillMode: Image.PreserveAspectFit
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    visible: appIcon.status === Image.Error
+                                    color: "#E3F2FD"
+                                    radius: 16
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: name.length > 0 ? name.charAt(0).toUpperCase() : "?"
+                                        font.pixelSize: 32
+                                        font.bold: true
+                                        color: "#1976D2"
+                                    }
+                                }
+                            }
+
+                            // Install badge
+                            Rectangle {
+                                visible: is_installed && name.length > 0 && name !== "No Result."
+                                width: 20
+                                height: 20
+                                radius: 10
+                                color: "#00D4AA"
+                                anchors.top: parent.top
+                                anchors.right: parent.right
+                                anchors.margins: -8
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "✓"
+                                    color: "white"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
+                            }
+                        }
+
+                        // App info
+                        Column {
+                            width: parent.width
+                            spacing: 4
+
+                            Text {
+                                text: name
+                                font.bold: true
+                                font.pixelSize: 16
+                                color: "#FFFFFF"
+                                font.family: "Segoe UI"
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                elide: Text.ElideRight
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+
+                            Text {
+                                text: author
+                                font.pixelSize: 12
+                                color: "#90FFFFFF"
+                                font.family: "Segoe UI"
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                elide: Text.ElideRight
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                        }
+
+                        // Install button
+                        Rectangle {
+                            visible: name.length > 0 && name !== "No Result."
+                            width: parent.width
+                            height: 36
+                            color: is_installed ? "#00D4AA" : "#2196F3"
+                            radius: 18
+                            
+                            Text {
+                                anchors.centerIn: parent
+                                text: is_installed ? "Installed" : "Install"
+                                color: "white"
+                                font.family: "Segoe UI"
+                                font.pixelSize: 12
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: appListView.setActiveIndex(index)
+                    }
+                }
+            }
+
             model: ListModel {
                 id: appListModel
                 ListElement {
@@ -432,234 +494,90 @@ Rectangle {
             }
         }
 
-        ListView {
-            id: appListMenu
-            x: 0
-            y: 76
-            width: parent.width
-            height: 50
-            orientation: ListView.Horizontal
-            clip: true
-            currentIndex: -1
-            spacing: 30
-            highlight: Rectangle {
-                color: "transparent"
-
-                Rectangle {
-                    id: borderLeft
-                    width: parent.width
-                    height: 1
-                    anchors.bottom: parent.bottom
-                    color: "#ebebeb"
-                }
-            }
-
-            delegate: Item {
-                id: item2
-                x: 5
-                width: 150
-                height: 40
-
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    Text {
-                        text: name
-                        font.bold: true
-                        font.pointSize: 14
-                        color: "#90ebebeb"
-                        font.family: "Arial"
-                        horizontalAlignment: Text.AlignHCenter
-                        anchors.centerIn: parent
-                        wrapMode: Text.WordWrap
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        appListMenu.forceActiveFocus()
-                        appListMenu.currentIndex = index
-                    }
-                }
-            }
-            model: ListModel {
-                ListElement {
-                    name: "Vehicle App"
-                }
-                ListElement {
-                    name: "Vehicle Service"
-                }
-            }
-        }
-
-        Rectangle {
-            id: search_area
-            x: 0
-            y: 8
-            width: 349
-            height: 50
-            visible: true
-            color: "#10ebebeb"
-            radius: 10
-            layer.enabled: true
-
-            CustomBtn1 {
-                id: searchAppButton
-                x: 0
-                y: 0
-                width: 47
-                height: 50
-                btnIconSource: "../resource/search.png"
-                iconWidth: 24
-                iconHeight: 24
-                colorDefault: "#00ececec"
-                colorClicked: "#00ffffff"
-                btn_border_color: "#00d5d7d7"
-                btn_background_color: "#00ffffff"
-                btn_color_overlay:"#60ebebeb"
-                onClicked:
-                {
-                    searchApp()
-                }
-            }
-
-            TextInput {
-                id: searchTextInput
-                x: 49
-                width: 300
-                height: 50
-                text: "Search"
-                anchors.verticalCenter: parent.verticalCenter
-                font.letterSpacing: 1
-                activeFocusOnPress: true
-                font.pixelSize: 16
-                horizontalAlignment: Text.AlignLeft
-                verticalAlignment: Text.AlignVCenter
-                font.styleName: "Regular"
-                font.bold: true
-                font.family: "Arial"
-                color: "#60ebebeb"
-                clip: true
-            }
-        }
-
+        // Notification area
         Rectangle {
             id: notifArea
             x: search_area.x + search_area.width + 20
             y: search_area.y
-            width: 600
-            height: 50
+            width: 400
+            height: 56
             visible: false
-            color: "#10ebebeb"
-            radius: 10
-            layer.enabled: true
+            color: "#1A1A1A"
+            radius: 28
+            border.color: "#00D4AA"
+            border.width: 1
 
-            BusyIndicator {
-                id: busyIndicator
-                running: true   // set to false to stop
-                width: 35
-                height: 35
-                Material.accent: "#29B6F6"
+            Row {
+                anchors.fill: parent
+                anchors.margins: 16
+                spacing: 12
 
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.leftMargin: 10  // optional spacing from left edge
-            }
+                BusyIndicator {
+                    width: 24
+                    height: 24
+                    Material.accent: "#00D4AA"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
 
-            Text {
-                id: notifAreaText
-                x: 49
-                width: 500
-                height: 50
-                text: "Installation service is running. Please wait ..."
-                anchors.verticalCenter: parent.verticalCenter
-                font.letterSpacing: 1
-                font.pixelSize: 16
-                horizontalAlignment: Text.AlignLeft
-                verticalAlignment: Text.AlignVCenter
-                font.styleName: "Regular"
-                font.bold: true
-                font.family: "Arial"
-                color: "#60ebebeb"
-                clip: true
+                Text {
+                    text: "Installation in progress..."
+                    font.family: "Segoe UI"
+                    font.pixelSize: 14
+                    color: "#FFFFFF"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
             }
         }
     }
 
+    // Marketplace selector
     ComboBox {
         id: marketplace_comboBox
-        x: parent.width - 300
-        y: 0
+        x: parent.width - 280
+        y: 32
         width: 250
-        height: 40
-        editable: false
+        height: 48
         model: ListModel {
             id: marketplace_comboBox_model
         }
 
-        // Delegate for dropdown items with custom background and text color
-        delegate: ItemDelegate {
-            width: marketplace_comboBox.width
-            text: model.text
-            font.family: "Arial"
-            font.pixelSize: 18
-            background: Rectangle {
-                color: "#FAF3E0"               // Background color for each item
-                border.color: "#A0A0A0"          // Optional border color for clarity
-                radius: 4                        // Optional rounded corners
-            }
-            contentItem: Text {
-                text: model.text
-                color: "#1A1A2E"                 // Dark text color for visibility
-                horizontalAlignment: Text.AlignLeft
-                verticalAlignment: Text.AlignVCenter
-                //elide: Text.ElideRight
-            }
-            onClicked: {
-                marketplace_comboBox.currentIndex = index     // Update the selected index
-                marketplace_comboBox.popup.close()            // Close dropdown on selection
-                console.log("Selected index:", index)
-                appAsync.setCurrentMarketPlaceIdx(index)
-            }
-        }
-
-        // Custom main ComboBox background color and text styling
         background: Rectangle {
-            color: "#10EBEBEB"                    // ComboBox background color
-            radius: 5
+            color: "#1A1A1A"
+            radius: 24
+            border.color: "#2A2A2A"
+            border.width: 1
         }
 
         contentItem: Text {
             text: marketplace_comboBox.currentText
-            color: "#90EBEBEB"                    // Color of selected text
-            font.family: "Arial"
-            font.pixelSize: 18
+            color: "#FFFFFF"
+            font.family: "Segoe UI"
+            font.pixelSize: 14
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
+        }
+
+        delegate: ItemDelegate {
             width: marketplace_comboBox.width
+            text: model.text
+            
+            background: Rectangle {
+                color: "#1A1A1A"
+                border.color: "#2A2A2A"
+            }
+            
+            contentItem: Text {
+                text: parent.text
+                color: "#FFFFFF"
+                font.family: "Segoe UI"
+                horizontalAlignment: Text.AlignLeft
+                verticalAlignment: Text.AlignVCenter
+            }
+            
+            onClicked: {
+                marketplace_comboBox.currentIndex = index
+                appAsync.setCurrentMarketPlaceIdx(index)
+            }
         }
     }
-    
-    // ImgOverlay {
-    //     id: icon_installed
-    //     x: 56
-    //     y: 50
-    //     width: 24
-    //     height: 24
-    //     active_img_source: "../resource/search.png"
-    //     default_img_source: "../resource/cloud-download-alt.png"
-    //     default_color_overlay: "#95ebebeb"
-    // }
-    
-    Item {
-        id: __materialLibrary__
-    }
-
 }
-
-/*##^##
-Designer {
-    D{i:0;formeditorZoom:0.66}
-}
-##^##*/

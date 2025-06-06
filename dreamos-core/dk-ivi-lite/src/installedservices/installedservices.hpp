@@ -20,6 +20,7 @@ typedef struct {
     QString iconPath;
     QString foldername;
     QString packagelink;
+    QString deploytarget;
     bool isInstalled;
     bool isSubscribed;
 } ServicesListStruct;
@@ -28,6 +29,20 @@ void readServicesList(const QString searchName, QList<ServicesListStruct> &Servi
 
 
 class ServicesAsync;
+
+class CheckAppRunningThread : public QThread
+{
+    Q_OBJECT
+
+public:
+    CheckAppRunningThread(ServicesAsync *parent);
+    void run();
+    void checkRunningAppSts();
+    bool isVipReachable();
+
+private:
+    ServicesAsync *m_serviceAsync = nullptr;
+};
 
 class InstalledServicesCheckThread : public QThread
 {
@@ -55,6 +70,8 @@ class ServicesAsync: public QObject
 public:
     ServicesAsync();
 
+    void parseSystemCfg();
+
     Q_INVOKABLE void initInstalledServicesFromDB();
 
     Q_INVOKABLE void executeServices(int appIdx, const QString name, const QString appId, bool isSubscribed);
@@ -73,12 +90,15 @@ Q_SIGNALS:
 public Q_SLOTS:
     void handleResults(QString appId, bool isStarted, QString msg);
     void fileChanged(const QString& path);
-    void checkRunningAppSts();
 
-private:
+public:
     QList<ServicesListStruct> installedServicesList;
+    bool m_is_vip_connected = false;
+    bool m_is_vip_service_installed = false;
+    
+private:
     InstalledServicesCheckThread *m_workerThread;
-    QTimer *m_timer_apprunningcheck;
+    CheckAppRunningThread *m_checkAppRunningThread;
 
     void removeObjectById(const QString &filePath, const QString &idToRemove);
 };

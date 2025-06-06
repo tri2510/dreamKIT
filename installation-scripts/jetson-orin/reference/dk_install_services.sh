@@ -67,7 +67,7 @@ for arg in "$@"; do
 done
 if [[ "$dk_service_tts" == "true" ]]; then
     docker pull $DOCKER_HUB_NAMESPACE/dk_service_tts:latest
-    docker stop dk_service_tts;docker rm dk_service_tts; docker run -d -it --name dk_service_tts --network dk_network --restart unless-stopped $DOCKER_AUDIO_PARAM $LOG_LIMIT_PARAM $DOCKER_HUB_NAMESPACE/dk_service_tts:latest
+    docker stop dk_service_tts;docker rm dk_service_tts; docker run -d -it --name dk_service_tts --network host --restart unless-stopped $DOCKER_AUDIO_PARAM $LOG_LIMIT_PARAM $DOCKER_HUB_NAMESPACE/dk_service_tts:latest
 else
     echo "To Install dk_service_tts, run './dk_install_services dk_service_tts=true'"
 fi

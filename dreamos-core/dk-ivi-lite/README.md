@@ -67,10 +67,11 @@ docker stop dk_ivi; docker rm dk_ivi ; docker run -d -it --name dk_ivi -v /tmp/.
 // export to run with docker container
 export DKCODE="dreamKIT"
 export DK_USER=$USER
-export DK_DOCKER_HUB_NAMESPACE="phongbosch"
+export DK_DOCKER_HUB_NAMESPACE="ghcr.io/samtranbosch"
 export DK_ARCH="amd64"
 export DK_CONTAINER_ROOT="/app/.dk/"
-docker stop dk_ivi; docker rm dk_ivi ; docker run -d -it --name dk_ivi -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=:0 --device /dev/dri:/dev/dri --restart unless-stopped -v ~/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_DOCKER_HUB_NAMESPACE=$DK_DOCKER_HUB_NAMESPACE -e DK_ARCH=$DK_ARCH -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker -e DK_CONTAINER_ROOT=$DK_CONTAINER_ROOT dk_ivi:latest
+export DK_VIP="true"
+docker stop dk_ivi; docker rm dk_ivi ; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=:0 --device /dev/dri:/dev/dri --restart unless-stopped -v ~/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_DOCKER_HUB_NAMESPACE=$DK_DOCKER_HUB_NAMESPACE -e DK_ARCH=$DK_ARCH -e DK_VIP=$DK_VIP -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker -e DK_CONTAINER_ROOT=$DK_CONTAINER_ROOT dk_ivi:latest
 ```
 
 ### Notes:

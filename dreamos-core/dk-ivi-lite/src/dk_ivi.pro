@@ -30,6 +30,7 @@ SOURCES += \
     library/vapiclient/vapiclient.cpp
 
 RESOURCES += main/main.qml \
+    main/settings.qml \
     controls/controls.qml \
     controls/ModeControl.qml \
     controls/ToggleButton.qml \

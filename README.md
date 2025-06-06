@@ -8,6 +8,8 @@ The digital.auto dreamKIT includes a vehicle computing unit, a central gateway, 
 
 The dreamKIT is a proven PoC device, which is used in multiple international show cases, as well as in different co-innovation challenges for software engineers.
 
+For a detailed overview of the dreamKIT system architecture and component interactions, see [DreamKit Architecture Overview](docs/DreamKit-Architecture-Overview.md).
+
 Feature overview for development, experimentation, and innovation:
 
 - Seamless integration with playground.digital.auto: SDV applications developed on playground could be deployed to the dreamKIT within seconds, wirelessly using socketIO technology.
@@ -70,6 +72,3 @@ We've created an example HVAC dreamPack with standard inputs and outputs to help
 3. **Create a Service**: Build your own service to expose APIs for your hardware/features.
 4. **Build a QM App**: Use your new APIs, along with existing ones, to create a cross-platform QM application.
 5. **Connect and Extend**: Integrate your app with cloud services or UI apps to complete your feature
-
-
-

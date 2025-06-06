@@ -66,7 +66,7 @@ RUN chmod +x /dist/kuksa-can-provider/*.sh /dist/kuksa-can-provider/dbcfeeder
 ENV PATH="/dist:/dist/kuksa-can-provider:$PATH"
 ENV LOG_LEVEL="info"
 ENV VEHICLEDATABROKER_DAPR_APP_ID=vehicledatabroker
-ENV CAN_PORT=vcan0
+ENV CAN_PORT=can1
 ENV PYTHONUNBUFFERED=yes
 
 CMD ["start.sh"]

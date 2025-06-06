@@ -68,7 +68,7 @@
   "VCLEFT_hvacBlowerSpiError" : 0,
   "VCLEFT_hvacBlowerTorque" : 0,
 
-  "DAS_headlightRequest" : 0,
+  "DAS_lowBeamRequest" : 0,
   "DAS_hazardLightRequest" : 0,
   "DAS_wiperSpeed" : 0,
   "DAS_turnIndicatorRequest" : 0,
@@ -76,7 +76,7 @@
   "DAS_heaterRequest" : 0,
   "DAS_highLowBeamOffReason" : 0,
   "DAS_turnIndicatorRequestReason" : 0,
-  "DAS_dynamicBrakeLightRequest" : 0,
+  "DAS_highBeamRequest" : 0,
   "DAS_radarHeaterRequest" : 0,
   "DAS_ahlbOverride" : 0,
   "DAS_mirrorFoldRequest" : 0,
