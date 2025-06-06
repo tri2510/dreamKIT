@@ -1,0 +1,61 @@
+# ==============================================
+# DK IVI Debug Configuration
+# ==============================================
+# This configuration enables debug features and verbose logging
+
+# Application Settings
+app:
+  name: "dk_ivi_debug"
+  version: "1.0.0"
+  log_level: "debug"  # Enable debug logging
+  
+# Runtime Configuration
+runtime:
+  container_name: "dk_ivi_debug"
+  restart_policy: "no"  # Don't restart on failure for debugging
+  run_mode: "interactive"  # Run in foreground for debugging
+  
+# Display and Graphics
+display:
+  qt_backend: "software"  # Use software rendering for stability
+  enable_gpu: false  # Disable GPU for debugging
+  x11_forwarding: true
+  display: ":0"
+  
+# Networking and Communication
+network:
+  vapi_databroker: "127.0.0.1:55555"
+  system_databroker: "127.0.0.1:55569"
+  host_networking: true
+  
+# Data and Storage
+storage:
+  data_dir: "/app/.dk"
+  config_dir: "/app/config"
+  library_path: "/app/exec/library"
+  
+# CAN and Vehicle Integration
+vehicle:
+  can_interface: "vcan0"  # Use virtual CAN for debugging
+  dbc_file: "/app/runtime/package/Model3CAN.dbc"
+  vss_mapping: "/app/vss/vss.json"
+  default_values: "/app/vss/dbc_default_values.json"
+  
+# Docker Configuration
+docker:
+  image: "ghcr.io/tri2510/dk-ivi-runtime:latest"
+  volumes:
+    - "${HOME}/.dk:/app/.dk:rw"
+    - "./output:/app/exec:ro"
+  environment:
+    DKCODE: "dreamKIT"
+    QML_IMPORT_PATH: "/usr/lib/x86_64-linux-gnu/qt6/qml"
+    QT_LOGGING_RULES: "*.debug=true"  # Enable Qt debug output
+  ports: []
+  
+# Development and Debug
+debug:
+  enable_debug: true
+  debug_port: 5005
+  core_dumps: true
+  memory_profiling: false

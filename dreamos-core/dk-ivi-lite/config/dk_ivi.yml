@@ -1,0 +1,69 @@
+# ==============================================
+# DK IVI Configuration
+# ==============================================
+# This is the main configuration file for dk_ivi application
+# All settings are documented and validated
+
+# Application Settings
+app:
+  name: "dk_ivi"
+  version: "1.0.0"
+  log_level: "info"  # debug, info, warn, error
+  
+# Runtime Configuration
+runtime:
+  container_name: "dk_ivi"
+  restart_policy: "unless-stopped"
+  run_mode: "detached"  # detached, interactive
+  
+# Display and Graphics
+display:
+  qt_backend: "software"  # software, opengl, vulkan
+  enable_gpu: true
+  x11_forwarding: true
+  display: ":0"
+  
+# Networking and Communication
+network:
+  vapi_databroker: "127.0.0.1:55555"
+  system_databroker: "127.0.0.1:55569"
+  host_networking: true
+  
+# Data and Storage
+storage:
+  data_dir: "/app/.dk"
+  config_dir: "/app/config"
+  library_path: "/app/exec/library"
+  
+# CAN and Vehicle Integration
+vehicle:
+  can_interface: "vcan0"
+  dbc_file: "/app/runtime/package/Model3CAN.dbc"
+  vss_mapping: "/app/vss/vss.json"
+  default_values: "/app/vss/dbc_default_values.json"
+  
+# Docker Configuration
+docker:
+  image: "ghcr.io/tri2510/dk-ivi-runtime:latest"
+  volumes:
+    - "host:container:mode"
+    - "${HOME}/.dk:/app/.dk:rw"
+    - "./output:/app/exec:ro"
+  environment:
+    DKCODE: "dreamKIT"
+    QML_IMPORT_PATH: "/usr/lib/x86_64-linux-gnu/qt6/qml"
+  ports: []
+  
+# Development and Debug
+debug:
+  enable_debug: false
+  debug_port: 5005
+  core_dumps: false
+  memory_profiling: false
+  
+# Override Examples (uncomment to use)
+# overrides:
+#   app.log_level: "debug"
+#   display.qt_backend: "opengl"
+#   vehicle.can_interface: "can0"
+#   debug.enable_debug: true
