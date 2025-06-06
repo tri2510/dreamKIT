@@ -1,0 +1,36 @@
+{
+    "_id": "66f4403288c998ad9aa31d99",
+    "name": "Coffee Machine App",
+    "category": "vehicle",
+    "thumbnail": "https://upload.digitalauto.tech/data/store-be/35658f86-f611-43a4-b2f8-8b2fe778fc40.jpeg",
+    "images": [],
+    "video": "none",
+    "shortDesc": "Service to enable coffee machine on vehicle",
+    "fullDesc": "Service to enable coffee machine on vehicle",
+    "visibility": "private",
+    "authors": ["Dev"],
+    "deleted": false,
+    "createdBy": "6555b2c98edc2aa75824b4df",
+    "likes": [],
+    "downloads": 0,
+    "entryPoint": "NAN",
+    "dashboardConfig": {
+        "DockerImageURL": "phongbosch/dk_app_coffee_machine_outin:latest",
+        "ExecutionCommand": "python run_script.py",
+        "ExecutionFileURL": "https://example.com/script.py",
+        "ExecutionFileType": "Python",
+        "RuntimeCfg": {
+            "CoffeePercentage": "50"
+        }
+
+    },
+    "state": "approved",
+    "source": "",
+    "type": "",
+    "createdAt": "2024-09-25T16:54:10.759Z",
+    "updatedAt": "2024-09-26T09:46:19.589Z",
+    "modelId": "",
+    "rating": null,
+    "ratingCount": 0,
+    "userLike": false
+}

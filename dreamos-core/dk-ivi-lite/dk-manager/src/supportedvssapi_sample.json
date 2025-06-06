@@ -1,0 +1,14 @@
+[
+"Vehicle.Body.Lights.IsLowBeamOn",
+"Vehicle.Body.Lights.IsBrakeOn",
+"Vehicle.Body.Lights.IsHazardOn",
+"Vehicle.Cabin.Seat.Row1.Pos1.Position",
+"Vehicle.Driver.DistractionLevel",
+"Vehicle.Driver.FatigueLevel",
+"Vehicle.Cabin.HVAC.Station.Row1.Left.FanSpeed",
+"Vehicle.Cabin.HVAC.Station.Row1.Right.FanSpeed",
+"Vehicle.Chassis.Accelerator.PedalPosition",
+"Vehicle.Powertrain.Transmission.CurrentGear",
+"Vehicle.Powertrain.Transmission.SelectedGear",
+"Vehicle.Speed"
+]
