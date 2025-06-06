@@ -16,8 +16,10 @@ print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_info() { echo -e "${BLUE}[BUILD]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-BUILDER_IMAGE="dk-ivi-builder"
-RUNTIME_IMAGE="dk-ivi-runtime"
+# Use pre-built GHCR images (change REPO_OWNER as needed)
+REPO_OWNER=${REPO_OWNER:-"tri2510"}
+BUILDER_IMAGE="ghcr.io/${REPO_OWNER}/dk-ivi-builder:latest"
+RUNTIME_IMAGE="ghcr.io/${REPO_OWNER}/dk-ivi-runtime:latest"
 ACTION=${1:-"build"}
 TARGET=${2:-"dk_ivi"}
 
@@ -25,12 +27,13 @@ show_help() {
     echo "Usage: $0 [ACTION] [TARGET]"
     echo ""
     echo "Actions:"
-    echo "  build     - Build the application (mounting src directly)"
-    echo "  run       - Run the built application"
-    echo "  clean     - Clean build cache and rebuild"
-    echo "  shell     - Open development shell"
-    echo "  runtime   - Open shell in runtime environment"
-    echo "  images    - Build Docker images (one-time setup)"
+    echo "  build       - Build the application (mounting src directly)"
+    echo "  run         - Run the built application"
+    echo "  clean       - Clean build cache and rebuild"
+    echo "  shell       - Open development shell"
+    echo "  runtime     - Open shell in runtime environment"
+    echo "  images      - Pull pre-built Docker images from GHCR (default)"
+    echo "  build-images- Build Docker images locally (if GHCR unavailable)"
     echo ""
     echo "Targets:"
     echo "  dk_ivi      - Build main dk_ivi application (default)"
@@ -38,12 +41,17 @@ show_help() {
     echo "  all         - Build both dk_ivi and dk-manager"
     echo ""
     echo "🚀 Ultra-fast workflow:"
-    echo "  1. $0 images              # Build base images (once)"
+    echo "  1. $0 images              # Pull pre-built images from GHCR (once)"
     echo "  2. $0 build               # Build dk_ivi (~30 seconds)"
     echo "  3. $0 build dk-manager    # Build dk-manager"
     echo "  4. $0 build all           # Build both modules"
     echo "  5. Edit code..."
     echo "  6. $0 build               # Rebuild instantly!"
+    echo ""
+    echo "📦 GHCR Configuration:"
+    echo "  REPO_OWNER=$REPO_OWNER    # Change this to your GitHub username"
+    echo "  Current images: $BUILDER_IMAGE"
+    echo "                  $RUNTIME_IMAGE"
 }
 
 check_requirements() {
@@ -80,11 +88,39 @@ detect_architecture() {
     esac
 }
 
-build_base_images() {
+pull_base_images() {
+    print_status "Pulling pre-built Docker images from GHCR..."
+    print_info "Repository: $REPO_OWNER"
+    
+    # Pull builder image
+    print_info "Pulling builder image: $BUILDER_IMAGE"
+    if docker pull $BUILDER_IMAGE; then
+        print_status "✅ Builder image pulled successfully!"
+    else
+        print_error "❌ Failed to pull builder image"
+        print_info "You may need to authenticate with GHCR or build locally"
+        return 1
+    fi
+    
+    # Pull runtime image  
+    print_info "Pulling runtime image: $RUNTIME_IMAGE"
+    if docker pull $RUNTIME_IMAGE; then
+        print_status "✅ Runtime image pulled successfully!"
+    else
+        print_error "❌ Failed to pull runtime image"
+        print_info "You may need to authenticate with GHCR or build locally"
+        return 1
+    fi
+    
+    print_status "✅ Base images ready!"
+    print_info "Now you can use '$0 build' for ultra-fast builds!"
+}
+
+build_base_images_locally() {
     local target_arch=$(detect_architecture)
     
-    print_status "Building base Docker images (one-time setup)..."
-    print_info "This takes 2-3 minutes but only needs to be done once or when dependencies change"
+    print_status "Building Docker images locally..."
+    print_info "This takes 2-3 minutes but only needs to be done once"
     
     # Build builder image
     print_info "Building builder image..."
@@ -94,8 +130,7 @@ build_base_images() {
         --build-arg HTTPS_PROXY=http://127.0.0.1:3128 \
         --build-arg http_proxy=http://127.0.0.1:3128 \
         --build-arg https_proxy=http://127.0.0.1:3128 \
-        --target builder \
-        -f Dockerfile.mount \
+        -f Dockerfile.builder \
         -t $BUILDER_IMAGE \
         .
     
@@ -108,20 +143,19 @@ build_base_images() {
         --build-arg http_proxy=http://127.0.0.1:3128 \
         --build-arg https_proxy=http://127.0.0.1:3128 \
         --build-arg TARGETARCH=$target_arch \
-        --target runtime \
-        -f Dockerfile.mount \
+        -f Dockerfile.runtime \
         -t $RUNTIME_IMAGE \
         .
     
-    print_status "✅ Base images built successfully!"
+    print_status "✅ Base images built locally!"
     print_info "Now you can use '$0 build' for ultra-fast builds!"
 }
 
 build_application() {
     # Check if base images exist
     if ! docker images $BUILDER_IMAGE | grep -q $BUILDER_IMAGE; then
-        print_warning "Builder image not found. Building base images first..."
-        build_base_images
+        print_warning "Builder image not found. Pulling from GHCR first..."
+        pull_base_images
     fi
     
     local target_arch=$(detect_architecture)
@@ -333,8 +367,8 @@ run_application() {
     fi
     
     if ! docker images $RUNTIME_IMAGE | grep -q $RUNTIME_IMAGE; then
-        print_warning "Runtime image not found. Building base images first..."
-        build_base_images
+        print_warning "Runtime image not found. Pulling from GHCR first..."
+        pull_base_images
     fi
     
     print_status "Running dk_ivi application..."
@@ -508,7 +542,11 @@ case $ACTION in
         ;;
     "images")
         check_requirements
-        build_base_images
+        pull_base_images
+        ;;
+    "build-images")
+        check_requirements
+        build_base_images_locally
         ;;
     "build")
         check_requirements
