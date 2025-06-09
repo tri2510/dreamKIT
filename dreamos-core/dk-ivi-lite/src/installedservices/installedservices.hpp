@@ -75,6 +75,8 @@ public:
     Q_INVOKABLE void initInstalledServicesFromDB();
 
     Q_INVOKABLE void executeServices(int appIdx, const QString name, const QString appId, bool isSubscribed);
+    
+    void handleEmbeddedServiceToggle(int appIdx, const QString name, const QString appId, bool isSubscribed);
 
     Q_INVOKABLE void removeServices(const int index);
 
