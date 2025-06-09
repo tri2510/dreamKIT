@@ -178,8 +178,8 @@ generate_docker_args() {
     fi
     
     # Standard volumes
-    docker_args="$docker_args -v \$HOME/.dk:/app/.dk"
-    docker_args="$docker_args -v \$(pwd)/output:/app/exec:ro"
+    docker_args="$docker_args -v $HOME/.dk:/app/.dk"
+    docker_args="$docker_args -v $(pwd)/output:/app/exec:ro"
     
     echo "$docker_args"
 }

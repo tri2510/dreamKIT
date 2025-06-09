@@ -11,6 +11,7 @@
 #include "../installedservices/installedservices.hpp"
 #include "../installedvapps/installedvapps.hpp"
 #include "../controls/controls.hpp"
+#include "../systemdashboard/systemdashboard.hpp"
 #include "../library/vapiclient/vapiclient.hpp"
 
 Q_LOGGING_CATEGORY(mainLog, "dk.ivi.main")
@@ -63,6 +64,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<ServicesAsync>("ServicesAsync", 1, 0, "ServicesAsync");
     qmlRegisterType<VappsAsync>("VappsAsync", 1, 0, "VappsAsync");
     qmlRegisterType<ControlsAsync>("ControlsAsync", 1, 0, "ControlsAsync");
+    qmlRegisterType<SystemDashboardBackend>("SystemDashboard", 1, 0, "SystemDashboardBackend");
 
     QQmlApplicationEngine engine;
     

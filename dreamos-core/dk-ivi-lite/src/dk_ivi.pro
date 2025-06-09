@@ -27,6 +27,7 @@ SOURCES += \
     installedservices/installedservices.cpp \
     installedservices/unsafeparamcheck.cpp \
     installedvapps/installedvapps.cpp \
+    systemdashboard/systemdashboard.cpp \
     library/vapiclient/vapiclient.cpp
 
 RESOURCES += main/main.qml \
@@ -38,6 +39,7 @@ RESOURCES += main/main.qml \
     marketplace/marketplace.qml \
     installedservices/installedservices.qml \
     installedvapps/installedvapps.qml \
+    systemdashboard/systemdashboard.qml \
     resource/customwidgets/CustomBtn1.qml \
     resource/customwidgets/CustomBtn2.qml \
     resource/customwidgets/IconBtn1.qml \
@@ -91,6 +93,7 @@ HEADERS += \
     installedservices/installedservices.hpp \
     installedservices/unsafeparamcheck.hpp \
     installedvapps/installedvapps.hpp \
+    systemdashboard/systemdashboard.hpp \
     library/vapiclient/vapiclient.hpp \
 
 INCLUDEPATH += library/vapiclient

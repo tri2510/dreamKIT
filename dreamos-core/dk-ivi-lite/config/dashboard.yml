@@ -1,0 +1,16 @@
+# dk_ivi System Dashboard Configuration (Test)
+
+monitoring:
+  update_interval: 5000
+  stats_interval: 2000
+
+services:
+  docker_services:
+    - name: "sdv-runtime"
+      description: "Eclipse KUKSA databroker"
+      critical: true
+
+security:
+  allowed_commands:
+    - "docker ps"
+    - "ps aux"

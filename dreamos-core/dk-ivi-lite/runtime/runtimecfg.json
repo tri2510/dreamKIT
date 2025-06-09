@@ -1,1 +1,8 @@
-{"can_channel": "candump"}
+{
+    "user": "trihua",
+    "architecture": "amd64",
+    "display": ":0",
+    "xdg_runtime": "/run/user/1000",
+    "docker_accessible": true,
+    "timestamp": "2025-06-09T23:32:18+07:00"
+}
