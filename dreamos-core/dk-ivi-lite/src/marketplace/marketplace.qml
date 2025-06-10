@@ -73,9 +73,7 @@ Rectangle {
             if(matchApp && !matchApp.is_installed) {
                 activeAppName = matchApp.name
                 installAppIndex = appListView.currentIndex
-                if (notifArea.visible === false) {
-                    installAppPopup.open()
-                }
+                installAppPopup.open()
             }
         }
     }
@@ -460,23 +458,78 @@ Rectangle {
                         Rectangle {
                             visible: name.length > 0 && name !== "No Result."
                             width: parent.width
-                            height: 36
+                            height: 40  // Made slightly taller
                             color: is_installed ? "#00D4AA" : "#2196F3"
-                            radius: 18
+                            radius: 20
+                            border.width: 2
+                            border.color: "transparent"
                             
                             Text {
                                 anchors.centerIn: parent
                                 text: is_installed ? "Installed" : "Install"
                                 color: "white"
                                 font.family: "Segoe UI"
-                                font.pixelSize: 12
+                                font.pixelSize: 14
+                                font.bold: true
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -5  // Extend click area slightly beyond button
+                                enabled: !is_installed
+                                hoverEnabled: true
+                                
+                                onEntered: {
+                                    parent.border.color = "#FFFFFF"
+                                    parent.scale = 1.05
+                                }
+                                
+                                onExited: {
+                                    parent.border.color = "transparent"
+                                    parent.scale = 1.0
+                                }
+                                
+                                onPressed: {
+                                    parent.scale = 0.95
+                                }
+                                
+                                onReleased: {
+                                    parent.scale = 1.05
+                                }
+                                
+                                onClicked: {
+                                    console.log("=== INSTALL BUTTON CLICKED ===")
+                                    console.log("App name:", name)
+                                    console.log("App index:", index)
+                                    console.log("Is installed:", is_installed)
+                                    
+                                    if (!is_installed) {
+                                        activeAppName = name
+                                        installAppIndex = index
+                                        installAppPopup.open()
+                                    }
+                                }
+                            }
+                            
+                            // Smooth transitions
+                            Behavior on scale {
+                                NumberAnimation { duration: 100 }
+                            }
+                            
+                            Behavior on border.color {
+                                ColorAnimation { duration: 150 }
                             }
                         }
                     }
 
+                    // Card background mouse area (for info only, does not interfere with button)
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: appListView.setActiveIndex(index)
+                        anchors.bottomMargin: 60  // Keep well clear of install button
+                        onClicked: {
+                            console.log("App card info area clicked for:", name)
+                            // Could show app details here in the future
+                        }
                     }
                 }
             }
@@ -520,7 +573,7 @@ Rectangle {
                 }
 
                 Text {
-                    text: "Installation in progress..."
+                    text: "Installing..."
                     font.family: "Segoe UI"
                     font.pixelSize: 14
                     color: "#FFFFFF"

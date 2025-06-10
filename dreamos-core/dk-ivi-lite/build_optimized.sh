@@ -195,6 +195,7 @@ build_dk_ivi() {
         -e https_proxy=http://127.0.0.1:3128 \
         -v $(pwd)/src:/app/src:ro \
         -v $(pwd)/output:/app/output \
+        -v $(pwd)/output/dk-manager:/app/dk-manager-output:ro \
         -v dk-ivi-build-cache:/app/build \
         -v dk-ivi-ccache:/cache/ccache \
         $BUILDER_IMAGE \
@@ -220,6 +221,15 @@ build_dk_ivi() {
                 echo 'Copying dk_ivi libraries...'
                 mkdir -p /app/output/library
                 cp -r /app/src/library/target/$target_arch/* /app/output/library/
+            fi
+            
+            # Copy dk_manager executable if it exists (for integrated mode)
+            if [ -f '/app/dk-manager-output/dk_manager' ]; then
+                echo 'Copying dk_manager executable for integrated mode...'
+                cp /app/dk-manager-output/dk_manager /app/output/
+            elif [ -d '/app/dk-manager-output' ] && [ \"\$(ls -A /app/dk-manager-output/ 2>/dev/null)\" ]; then
+                echo 'Copying available dk_manager executables...'
+                cp /app/dk-manager-output/* /app/output/ 2>/dev/null || true
             fi
             
             echo '=== dk_ivi build completed ==='

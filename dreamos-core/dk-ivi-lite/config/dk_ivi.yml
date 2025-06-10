@@ -52,6 +52,13 @@ docker:
   environment:
     DKCODE: "dreamKIT"
     QML_IMPORT_PATH: "/usr/lib/x86_64-linux-gnu/qt6/qml"
+    DK_USER: "${USER}"
+    DK_DOCKER_HUB_NAMESPACE: "ghcr.io/eclipse-autowrx"
+    DK_ARCH: "auto-detect"
+    DK_CONTAINER_ROOT: "${HOME}/.dk/"
+    DK_VIP: "false"
+    DK_EMBEDDED_MODE: "1"
+    DK_MOCK_MODE: "1"
   ports: []
   
 # Development and Debug

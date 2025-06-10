@@ -158,11 +158,11 @@ run_container() {
     
     # Generate Docker arguments from configuration
     local docker_args
-    docker_args=$("$CONFIG_MANAGER" docker-args "$CONFIG_FILE")
+    docker_args=$("$CONFIG_MANAGER" docker-args "$CONFIG_FILE" 2>/dev/null)
     
     # Generate application arguments from configuration
     local app_args
-    app_args=$("$CONFIG_MANAGER" app-args "$CONFIG_FILE")
+    app_args=$("$CONFIG_MANAGER" app-args "$CONFIG_FILE" 2>/dev/null)
     
     print_info "=== Runtime Parameters ==="
     echo "Container Name:    $DK_CONTAINER_NAME"

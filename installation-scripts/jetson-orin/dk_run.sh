@@ -94,10 +94,8 @@ check_docker_images() {
     show_info "Checking required Docker images..."
     
     local required_images=(
-        "ghcr.io/eclipse/kuksa.val/kuksa-client:0.4.2"
-        "ghcr.io/eclipse-autowrx/sdv-runtime:latest"
-        "ghcr.io/samtranbosch/dk_manager:latest"
-        "ghcr.io/samtranbosch/dk_appinstallservice:latest"
+        "ghcr.io/tri2510/sdv-runtime:latest"
+        "ghcr.io/tri2510/dk-ivi-enhanced:latest"
     )
     
     local missing_images=()
@@ -124,7 +122,7 @@ check_docker_images() {
 check_core_services() {
     show_info "Checking core dreamOS services..."
     
-    local services=("sdv-runtime" "dk_manager")
+    local services=("sdv-runtime")
     local stopped_services=()
     
     for service in "${services[@]}"; do
@@ -154,51 +152,44 @@ start_core_services() {
         show_info "Starting SDV Runtime..."
         docker start sdv-runtime >/dev/null 2>&1 || {
             show_info "Creating new SDV Runtime container..."
+            # Get serial number for runtime name
+            serial_file="/home/$DK_USER/.dk/dk_manager/serial-number"
+            if [[ -s "$serial_file" ]]; then
+                serial_number=$(tail -n 1 "$serial_file")
+            else
+                serial_number=$(openssl rand -hex 8)
+                mkdir -p "$(dirname "$serial_file")"
+                echo "$serial_number" > "$serial_file"
+            fi
+            RUNTIME_NAME="dreamKIT-${serial_number: -8}"
+            
             docker run -d -it --name sdv-runtime --restart unless-stopped \
                 -e USER="$DK_USER" \
-                -e RUNTIME_NAME="DreamKIT_BGSV" \
-                -p 55555:55555 \
+                -e RUNTIME_NAME="$RUNTIME_NAME" \
+                --network host \
                 -e ARCH="$ARCH" \
-                ghcr.io/eclipse-autowrx/sdv-runtime:latest >/dev/null 2>&1
+                ghcr.io/tri2510/sdv-runtime:latest >/dev/null 2>&1
         }
         show_success "SDV Runtime started"
-    fi
-    
-    # Start DK Manager if not running
-    if ! docker ps --format "{{.Names}}" | grep -q "^dk_manager$"; then
-        show_info "Starting DreamKit Manager..."
-        docker start dk_manager >/dev/null 2>&1 || {
-            show_info "Creating new DreamKit Manager container..."
-            docker run -d -it --name dk_manager \
-                $LOG_LIMIT_PARAM \
-                $DOCKER_SHARE_PARAM \
-                -v "$HOME_DIR/.dk:/app/.dk" \
-                --restart unless-stopped \
-                -e USER="$DK_USER" \
-                -e DOCKER_HUB_NAMESPACE="$DOCKER_HUB_NAMESPACE" \
-                -e ARCH="$ARCH" \
-                ghcr.io/samtranbosch/dk_manager:latest >/dev/null 2>&1
-        }
-        show_success "DreamKit Manager started"
     fi
 }
 
 # Function to check if IVI is available
 check_ivi_availability() {
-    show_info "Checking IVI interface availability..."
+    show_info "Checking enhanced IVI interface availability..."
     
-    if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^ghcr.io/samtranbosch/dk_ivi:latest$"; then
-        show_success "IVI interface image found"
+    if docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^ghcr.io/tri2510/dk-ivi-enhanced:latest$"; then
+        show_success "Enhanced IVI interface image found"
         return 0
     else
-        show_warning "IVI interface image not found"
+        show_warning "Enhanced IVI interface image not found"
         return 1
     fi
 }
 
 # Function to start IVI interface
 start_ivi() {
-    show_info "Starting IVI interface..."
+    show_info "Starting enhanced IVI interface with embedded services..."
     
     # Enable X11 forwarding
     if [ -f "$CURRENT_DIR/scripts/dk_enable_xhost.sh" ]; then
@@ -209,6 +200,12 @@ start_ivi() {
     # Stop existing IVI container if running
     docker stop dk_ivi >/dev/null 2>&1
     docker rm dk_ivi >/dev/null 2>&1
+    
+    # Load embedded mode environment variables
+    DK_EMBEDDED_MODE=${DK_EMBEDDED_MODE:-"1"}
+    DK_MOCK_MODE=${DK_MOCK_MODE:-"1"}
+    
+    show_info "Configuring enhanced dk_ivi with embedded mode environment..."
     
     # Check for NVIDIA hardware
     if [ -f "/etc/nv_tegra_release" ]; then
@@ -228,7 +225,9 @@ start_ivi() {
             -e DK_DOCKER_HUB_NAMESPACE="$DOCKER_HUB_NAMESPACE" \
             -e DK_ARCH="$ARCH" \
             -e DK_CONTAINER_ROOT="/app/.dk/" \
-            ghcr.io/samtranbosch/dk_ivi:latest >/dev/null 2>&1
+            -e DK_EMBEDDED_MODE="$DK_EMBEDDED_MODE" \
+            -e DK_MOCK_MODE="$DK_MOCK_MODE" \
+            ghcr.io/tri2510/dk-ivi-enhanced:latest >/dev/null 2>&1
     else
         show_info "Standard hardware detected - using generic configuration"
         docker run -d -it --name dk_ivi \
@@ -246,26 +245,28 @@ start_ivi() {
             -e DK_DOCKER_HUB_NAMESPACE="$DOCKER_HUB_NAMESPACE" \
             -e DK_ARCH="$ARCH" \
             -e DK_CONTAINER_ROOT="/app/.dk/" \
-            ghcr.io/samtranbosch/dk_ivi:latest >/dev/null 2>&1
+            -e DK_EMBEDDED_MODE="$DK_EMBEDDED_MODE" \
+            -e DK_MOCK_MODE="$DK_MOCK_MODE" \
+            ghcr.io/tri2510/dk-ivi-enhanced:latest >/dev/null 2>&1
     fi
     
     # Verify IVI started successfully
     sleep 2
     if docker ps --format "{{.Names}}" | grep -q "^dk_ivi$"; then
-        show_success "IVI interface started successfully"
-        show_info "IVI dashboard should now be available on your display"
+        show_success "Enhanced IVI interface started successfully"
+        show_info "Enhanced IVI dashboard with embedded services should now be available"
         return 0
     else
-        show_error "Failed to start IVI interface"
+        show_error "Failed to start enhanced IVI interface"
         return 1
     fi
 }
 
 # Function to show status
 show_status() {
-    echo -e "\n${CYAN}${BOLD}dreamOS Service Status:${NC}"
+    echo -e "\n${CYAN}${BOLD}Enhanced dreamOS Service Status:${NC}"
     
-    local services=("sdv-runtime" "dk_manager" "dk_ivi")
+    local services=("sdv-runtime" "dk_ivi")
     
     for service in "${services[@]}"; do
         if docker ps --format "{{.Names}}" | grep -q "^$service$"; then
@@ -275,6 +276,11 @@ show_status() {
             echo -e "${RED} ${CROSS} $service: ${BOLD}Stopped${NC}"
         fi
     done
+    
+    echo -e "${CYAN}${BOLD}Enhanced Mode Features:${NC}"
+    echo -e "${BLUE} ${ARROW} Embedded dk_manager (no separate container)${NC}"
+    echo -e "${BLUE} ${ARROW} Embedded app install service (no separate container)${NC}"
+    echo -e "${BLUE} ${ARROW} Integrated service management in dk_ivi${NC}"
     echo
 }
 

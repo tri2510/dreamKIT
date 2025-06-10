@@ -25,11 +25,16 @@ Rectangle {
     }
 
     function findChildByObjectName(parent, objectName) {
+        if (!parent || !parent.children) {
+            return null;
+        }
+        
         for (var i = 0; i < parent.children.length; i++) {
-            if (parent.children[i].objectName === objectName) {
-                return parent.children[i];
-            } else if (parent.children[i].children.length > 0) {
-                var found = findChildByObjectName(parent.children[i], objectName);
+            var child = parent.children[i];
+            if (child && child.objectName === objectName) {
+                return child;
+            } else if (child && child.children && child.children.length > 0) {
+                var found = findChildByObjectName(child, objectName);
                 if (found) return found;
             }
         }
@@ -68,11 +73,15 @@ Rectangle {
                                
         onUpdateStartAppMsg: (appId, isStarted, msg) => {
             startSubscribePopup.message = msg
-            var chkItem = appListView.itemAtIndex(appListView.currentIndex);
-            var chkItemChildren = chkItem.children;
-            for( var i = 0 ; i < chkItemChildren.length ; ++i) {
-                if(chkItemChildren[i].objectName === appId) {
-                    chkItemChildren[i].checked = isStarted
+            if (appListView.currentIndex >= 0 && appListView.currentIndex < appListView.count) {
+                var chkItem = appListView.itemAtIndex(appListView.currentIndex);
+                if (chkItem && chkItem.children) {
+                    var chkItemChildren = chkItem.children;
+                    for( var i = 0 ; i < chkItemChildren.length ; ++i) {
+                        if(chkItemChildren[i].objectName === appId) {
+                            chkItemChildren[i].checked = isStarted
+                        }
+                    }
                 }
             }
             appListView.currentIndex = -1
@@ -81,10 +90,14 @@ Rectangle {
         }
 
         onUpdateServicesRunningSts: (appId, isStarted, idx) => {
-            var chkItem = appListView.itemAtIndex(idx);
-            var foundChild = findChildByObjectName(chkItem, appId);
-            if (foundChild) {
-                foundChild.checked = isStarted;
+            if (idx >= 0 && idx < appListView.count) {
+                var chkItem = appListView.itemAtIndex(idx);
+                if (chkItem) {
+                    var foundChild = findChildByObjectName(chkItem, appId);
+                    if (foundChild) {
+                        foundChild.checked = isStarted;
+                    }
+                }
             }
         }
     }

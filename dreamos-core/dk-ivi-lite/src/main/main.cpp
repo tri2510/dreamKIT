@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "config.hpp"
+#include "dkmanager_subprocess.hpp"
 #include "../digitalauto/digitalauto.hpp"
 #include "../marketplace/marketplace.hpp"
 #include "../installedservices/installedservices.hpp"
@@ -50,6 +51,28 @@ int main(int argc, char *argv[])
     qCInfo(mainLog) << "Starting DreamKIT IVI Application...";
     qCDebug(mainLog) << "Qt version:" << QT_VERSION_STR;
     qCDebug(mainLog) << "Command line arguments:" << app.arguments();
+
+    // Initialize and start dk_manager subprocess
+    qCInfo(mainLog) << "Initializing dk_manager subprocess...";
+    DkManagerSubprocess dkManager(&app);
+    
+    // Connect manager signals for monitoring
+    QObject::connect(&dkManager, &DkManagerSubprocess::managerStarted, [&]() {
+        qCInfo(mainLog) << "dk_manager subprocess started successfully";
+    });
+    
+    QObject::connect(&dkManager, &DkManagerSubprocess::managerError, [&](const QString &error) {
+        qCWarning(mainLog) << "dk_manager error:" << error;
+    });
+    
+    QObject::connect(&dkManager, &DkManagerSubprocess::managerStopped, [&]() {
+        qCInfo(mainLog) << "dk_manager subprocess stopped";
+    });
+    
+    // Start the manager
+    if (!dkManager.startManager()) {
+        qCWarning(mainLog) << "Failed to start dk_manager subprocess - continuing without it";
+    }
 
     // VAPI Client Initialization with configurable endpoint
     QString vapiEndpoint = config.vapiDataBroker();

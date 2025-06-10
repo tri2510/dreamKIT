@@ -26,7 +26,7 @@ SPINNER_FRAMES=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
 PROGRESS_CHARS=("▱" "▰")
 
 # Global variables for progress tracking
-TOTAL_STEPS=12
+TOTAL_STEPS=10
 CURRENT_STEP=0
 
 # Function to show animated banner
@@ -311,7 +311,7 @@ main() {
     DOCKER_SHARE_PARAM="-v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker"
     DOCKER_AUDIO_PARAM="--device /dev/snd --group-add audio -e PULSE_SERVER=unix:${XDG_RUNTIME_DIR}/pulse/native -v ${XDG_RUNTIME_DIR}/pulse/native:${XDG_RUNTIME_DIR}/pulse/native -v $HOME_DIR/.config/pulse/cookie:/root/.config/pulse/cookie"
     LOG_LIMIT_PARAM="--log-opt max-size=10m --log-opt max-file=3"
-    DOCKER_HUB_NAMESPACE="ghcr.io/eclipse-autowrx"
+    DOCKER_HUB_NAMESPACE="ghcr.io/tri2510"
     
     show_success "Runtime configuration completed"
     
@@ -335,45 +335,27 @@ main() {
         run_with_feedback "sudo apt-get update && sudo apt-get install -y git" "Git installed successfully" "Failed to install Git" true true
     fi
     
-    # Step 7: KUKSA Client
-    show_step 7 "KUKSA Client" "Downloading vehicle signal specification client"
+    # Step 7: SDV Runtime (Only Essential Container)
+    show_step 7 "SDV Runtime" "Setting up Software Defined Vehicle runtime environment"
     
-    docker_pull_with_info "ghcr.io/eclipse/kuksa.val/kuksa-client:0.4.2" \
-        "Eclipse KUKSA VAL client for vehicle signal access and testing" \
-        "GitHub Container Registry (Eclipse Foundation)"
-    
-    # Step 8: SDV Runtime
-    show_step 8 "SDV Runtime" "Setting up Software Defined Vehicle runtime environment"
-    
-    docker_pull_with_info "$DOCKER_HUB_NAMESPACE/sdv-runtime:latest" \
+    docker_pull_with_info "ghcr.io/tri2510/sdv-runtime:latest" \
         "Eclipse AutoWrx SDV runtime for vehicle application management" \
         "GitHub Container Registry (Eclipse AutoWrx Project)"
     
     show_info "Configuring SDV runtime container..."
     show_info "RUNTIME_NAME: $RUNTIME_NAME"
     run_with_feedback "docker stop sdv-runtime 2>/dev/null || true; docker rm sdv-runtime 2>/dev/null || true" "Cleaned up existing SDV runtime" "Cleanup warning"
-    run_with_feedback "docker run -d -it --name sdv-runtime --restart unless-stopped -e USER=$DK_USER -e RUNTIME_NAME=$RUNTIME_NAME --network host -e ARCH=$ARCH $DOCKER_HUB_NAMESPACE/sdv-runtime:latest" "SDV runtime container started on port 55555" "Failed to start SDV runtime"
+    run_with_feedback "docker run -d -it --name sdv-runtime --restart unless-stopped -e USER=$DK_USER -e RUNTIME_NAME=$RUNTIME_NAME --network host -e ARCH=$ARCH ghcr.io/tri2510/sdv-runtime:latest" "SDV runtime container started on port 55555" "Failed to start SDV runtime"
     
-    # Step 9: DreamKit Manager
-    show_step 9 "DreamKit Manager" "Installing core management services"
+    # Step 8: Enhanced dk_ivi Environment Setup
+    show_step 8 "Enhanced dk_ivi Setup" "Configuring embedded mode environment for integrated operation"
     
-    docker_pull_with_info "$DOCKER_HUB_NAMESPACE/dk_manager:latest" \
-        "DreamOS core manager for system orchestration and service management" \
-        "GitHub Container Registry (DreamOS Project)"
+    show_info "Setting up enhanced dk_ivi environment variables..."
+    # Enhanced environment for embedded mode - no separate dk_manager or install service containers
+    DOCKER_HUB_NAMESPACE="ghcr.io/tri2510"
     
-    show_info "Configuring DreamKit manager container..."
-    run_with_feedback "docker stop dk_manager 2>/dev/null || true; docker rm dk_manager 2>/dev/null || true" "Cleaned up existing manager" "Manager cleanup"
-    run_with_feedback "docker run -d -it --name dk_manager $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk --restart unless-stopped -e USER=$DK_USER -e DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e ARCH=$ARCH $DOCKER_HUB_NAMESPACE/dk_manager:latest" "DreamKit manager started with Docker socket access" "Failed to start manager"
-
-    # Step 10: App Installation Service
-    show_step 10 "App Services" "Installing application management services"
-
-    docker_pull_with_info "$DOCKER_HUB_NAMESPACE/dk_appinstallservice:latest" \
-        "DreamOS application installation and lifecycle management service" \
-        "GitHub Container Registry (DreamOS Project)"
-    
-    # Step 11: Docker local registry (Optional)
-    show_step 11 "Docker local registry" "VIP installation"
+    # Step 9: Docker local registry (Optional)
+    show_step 9 "Docker local registry" "VIP installation"
     dk_vip_demo="false"
     echo -e "\n${YELLOW}Do you want to continue? [y/N]: ${NC}"
     read -r install_dockerlocalregistry_choice
@@ -384,8 +366,8 @@ main() {
         run_with_feedback "$CURRENT_DIR/scripts/setup_local_docker_registry.sh" "Docker local host enabled" "Docker local setup failed"
     fi
 
-    # Step 12: IVI Interface (Optional)
-    show_step 12 "IVI Interface" "Configuring In-Vehicle Infotainment system"
+    # Step 10: Enhanced IVI Interface 
+    show_step 10 "Enhanced IVI Interface" "Configuring integrated In-Vehicle Infotainment system"
     
     # Check for dk_ivi parameter
     dk_ivi_value=""
@@ -396,17 +378,19 @@ main() {
     done
     
     if [[ "$dk_ivi_value" == "true" ]]; then
-        show_info "Installing IVI interface..."
+        show_info "Installing enhanced IVI interface with embedded services..."
         run_with_feedback "$CURRENT_DIR/scripts/dk_enable_xhost.sh" "X11 forwarding enabled" "X11 setup failed"
-        run_with_feedback "docker pull $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI image downloaded" "Failed to download IVI"
+        run_with_feedback "docker pull $DOCKER_HUB_NAMESPACE/dk-ivi-enhanced:latest" "Enhanced IVI image downloaded" "Failed to download IVI"
         run_with_feedback "xhost +local:docker" "Docker X11 access granted" "X11 access failed"
+        
+        show_info "Configuring enhanced dk_ivi with embedded mode environment..."
         
         if [ -f "/etc/nv_tegra_release" ]; then
             show_info "NVIDIA Jetson board detected - optimizing for hardware"
-            run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR -e QT_QUICK_BACKEND=software --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_VIP=$dk_vip_demo -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI started (NVIDIA optimized)" "Failed to start IVI"
+            run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR -e QT_QUICK_BACKEND=software --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_VIP=$dk_vip_demo -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" -e DK_EMBEDDED_MODE=1 -e DK_MOCK_MODE=1 $DOCKER_HUB_NAMESPACE/dk-ivi-enhanced:latest" "Enhanced IVI started (NVIDIA optimized)" "Failed to start IVI"
         else
             show_info "Standard hardware detected - using generic configuration"
-            run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --device /dev/dri:/dev/dri --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_VIP=$dk_vip_demo -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI started (standard)" "Failed to start IVI"
+            run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --device /dev/dri:/dev/dri --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_VIP=$dk_vip_demo -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" -e DK_EMBEDDED_MODE=1 -e DK_MOCK_MODE=1 $DOCKER_HUB_NAMESPACE/dk-ivi-enhanced:latest" "Enhanced IVI started (standard)" "Failed to start IVI"
         fi
     else
         show_info "IVI installation skipped"
@@ -416,17 +400,19 @@ main() {
         read -r install_ivi_choice
         
         if [[ "$install_ivi_choice" =~ ^[Yy]$ ]]; then
-            echo -e "\n${GREEN}Installing IVI interface...${NC}"
+            echo -e "\n${GREEN}Installing enhanced IVI interface...${NC}"
             run_with_feedback "$CURRENT_DIR/scripts/dk_enable_xhost.sh" "X11 forwarding enabled" "X11 setup failed"
-            run_with_feedback "docker pull $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI image downloaded" "Failed to download IVI"
+            run_with_feedback "docker pull $DOCKER_HUB_NAMESPACE/dk-ivi-enhanced:latest" "Enhanced IVI image downloaded" "Failed to download IVI"
             run_with_feedback "xhost +local:docker" "Docker X11 access granted" "X11 access failed"
+            
+            show_info "Configuring enhanced dk_ivi with embedded mode environment..."
             
             if [ -f "/etc/nv_tegra_release" ]; then
                 show_info "NVIDIA Jetson board detected - optimizing for hardware"
-                run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR -e QT_QUICK_BACKEND=software --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_VIP=$dk_vip_demo -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI started (NVIDIA optimized)" "Failed to start IVI"
+                run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR -e QT_QUICK_BACKEND=software --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_VIP=$dk_vip_demo -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" -e DK_EMBEDDED_MODE=1 -e DK_MOCK_MODE=1 $DOCKER_HUB_NAMESPACE/dk-ivi-enhanced:latest" "Enhanced IVI started (NVIDIA optimized)" "Failed to start IVI"
             else
                 show_info "Standard hardware detected - using generic configuration"
-                run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --device /dev/dri:/dev/dri --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_VIP=$dk_vip_demo -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" $DOCKER_HUB_NAMESPACE/dk_ivi:latest" "IVI started (standard)" "Failed to start IVI"
+                run_with_feedback "docker stop dk_ivi 2>/dev/null || true; docker rm dk_ivi 2>/dev/null || true; docker run -d -it --name dk_ivi --network host -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$DISPLAY -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR --device /dev/dri:/dev/dri --restart unless-stopped $LOG_LIMIT_PARAM $DOCKER_SHARE_PARAM -v $HOME_DIR/.dk:/app/.dk -e DKCODE=dreamKIT -e DK_USER=$DK_USER -e DK_VIP=$dk_vip_demo -e DK_DOCKER_HUB_NAMESPACE=$DOCKER_HUB_NAMESPACE -e DK_ARCH=$ARCH -e DK_CONTAINER_ROOT=\"/app/.dk/\" -e DK_EMBEDDED_MODE=1 -e DK_MOCK_MODE=1 $DOCKER_HUB_NAMESPACE/dk-ivi-enhanced:latest" "Enhanced IVI started (standard)" "Failed to start IVI"
             fi
             # Update the environment variable to reflect the installation
             dk_ivi_value="true"
@@ -455,6 +441,9 @@ DOCKER_AUDIO_PARAM="${DOCKER_AUDIO_PARAM}"
 LOG_LIMIT_PARAM="${LOG_LIMIT_PARAM}"
 DOCKER_HUB_NAMESPACE="${DOCKER_HUB_NAMESPACE}"
 dk_ivi_value="${dk_ivi_value}"
+# Enhanced mode environment variables
+DK_EMBEDDED_MODE="1"
+DK_MOCK_MODE="1"
 EOF
     chmod +x "${DK_ENV_FILE}"
     

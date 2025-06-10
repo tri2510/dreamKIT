@@ -12,7 +12,7 @@ echo "username: $DK_USER"
 
 # Set Env Variables
 HOME_DIR="/home/$DK_USER"
-DOCKER_HUB_NAMESPACE="ghcr.io/eclipse-autowrx"
+DOCKER_HUB_NAMESPACE="ghcr.io/tri2510"
 DK_CONTAINER_LIST="dk_manager dk_ivi sdv-runtime dk_appinstallservice"
 
 echo "Env Variables:"

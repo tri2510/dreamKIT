@@ -76,10 +76,10 @@ private:
     QList<MarketplaceInfo> m_marketplaceList;
     int m_current_idx = 0;
     QString m_current_searchname = "";
-    QTimer *m_timer_installservice_runningcheck;
 
     QList<MarketplaceInfo> parseMarketplaceFile(const QString &filePath);
     void appstore_readAppList(const QString searchName, QList<AppListStruct> &AppListInfo);
+    bool isAppInstalled(const QString &appId, const QString &category);
 };
 
 #endif //APPASYNCCLASS_H
