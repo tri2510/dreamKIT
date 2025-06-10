@@ -60,6 +60,19 @@ COPY --from=builder /app/output/ /app/exec/
 COPY --from=builder /app/dk_appinstallservice/ /app/dk_appinstallservice/
 COPY --from=builder /app/scripts/ /app/scripts/
 
+# Copy the architecture-specific library to the runtime location
+ARG TARGETARCH
+RUN mkdir -p /app/exec/library
+COPY --from=builder /app/src/library/target/amd64/libKuksaClient.so /app/exec/library/libKuksaClient.so.amd64
+COPY --from=builder /app/src/library/target/arm64/libKuksaClient.so /app/exec/library/libKuksaClient.so.arm64
+
+# Create symlink to the appropriate architecture library
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+        ln -sf libKuksaClient.so.arm64 /app/exec/library/libKuksaClient.so; \
+    else \
+        ln -sf libKuksaClient.so.amd64 /app/exec/library/libKuksaClient.so; \
+    fi
+
 # Debug: Check what was copied
 RUN echo "=== Debug: Contents of /app/exec ===" && \
     ls -la /app/exec/ && \
