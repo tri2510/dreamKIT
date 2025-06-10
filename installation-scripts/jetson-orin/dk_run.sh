@@ -75,6 +75,9 @@ load_environment() {
         DK_USER=$USER
     fi
     
+    # Set HOME_DIR for consistency with legacy
+    HOME_DIR="/home/$DK_USER"
+    
     # Look for environment file
     ENV_FILE="/home/$DK_USER/.dk/dk_swupdate/dk_swupdate_env.sh"
     
@@ -82,6 +85,11 @@ load_environment() {
         source "$ENV_FILE"
         show_success "Environment loaded from $ENV_FILE"
         show_info "User: ${BOLD}$DK_USER${NC}, Architecture: ${BOLD}$ARCH${NC}"
+        
+        # Set Docker parameters for consistency with legacy
+        LOG_LIMIT_PARAM="--log-opt max-size=10m --log-opt max-file=3"
+        DOCKER_SHARE_PARAM="-v /var/run/docker.sock:/var/run/docker.sock"
+        
         return 0
     else
         show_error "Environment file not found at $ENV_FILE"
@@ -152,21 +160,10 @@ start_core_services() {
         show_info "Starting SDV Runtime..."
         docker start sdv-runtime >/dev/null 2>&1 || {
             show_info "Creating new SDV Runtime container..."
-            # Get serial number for runtime name
-            serial_file="/home/$DK_USER/.dk/dk_manager/serial-number"
-            if [[ -s "$serial_file" ]]; then
-                serial_number=$(tail -n 1 "$serial_file")
-            else
-                serial_number=$(openssl rand -hex 8)
-                mkdir -p "$(dirname "$serial_file")"
-                echo "$serial_number" > "$serial_file"
-            fi
-            RUNTIME_NAME="dreamKIT-${serial_number: -8}"
-            
             docker run -d -it --name sdv-runtime --restart unless-stopped \
                 -e USER="$DK_USER" \
-                -e RUNTIME_NAME="$RUNTIME_NAME" \
-                --network host \
+                -e RUNTIME_NAME="DreamKIT_BGSV" \
+                -p 55555:55555 \
                 -e ARCH="$ARCH" \
                 ghcr.io/tri2510/sdv-runtime:latest >/dev/null 2>&1
         }
