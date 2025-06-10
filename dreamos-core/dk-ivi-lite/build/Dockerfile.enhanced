@@ -9,11 +9,18 @@ LABEL maintainer="DreamKIT Team"
 LABEL description="Enhanced DreamKIT IVI with embedded dk_manager and app install services"
 LABEL version="2.0-enhanced"
 
-# Copy source code
+# Copy source code and required library files
 COPY src/ /app/src/
 COPY dk-manager/src/ /app/dk-manager-src/
 COPY dk_appinstallservice/ /app/dk_appinstallservice/
 COPY tools/scripts/ /app/scripts/
+
+# Create library target directories and copy existing libraries
+RUN mkdir -p /app/src/library/target/amd64 /app/src/library/target/arm64
+
+# Copy existing library files
+COPY docker_output/library/ /app/src/library/target/amd64/
+COPY docker_output/library/ /app/src/library/target/arm64/
 
 # Set build environment
 ENV QT_QPA_PLATFORM=offscreen
