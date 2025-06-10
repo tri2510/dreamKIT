@@ -49,8 +49,9 @@ LABEL description="Enhanced DreamKIT IVI with embedded services - Runtime Image"
 LABEL version="2.0-enhanced"
 LABEL architecture="amd64/arm64"
 
-# Note: Enhanced features use embedded services without additional packages
-# Python3 and basic tools should be available from the base runtime image
+# Install supervisor for managing embedded services
+RUN apt-get update && apt-get install -y supervisor && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Create enhanced application structure
 WORKDIR /app
@@ -188,8 +189,9 @@ if [ "$DK_EMBEDDED_MODE" = "1" ]; then
     echo "🔄 Starting in Enhanced Embedded Mode"
     echo "  Features: Integrated dk_manager + app install service"
     
-    # Start supervisor to manage embedded services
-    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/enhanced-services.conf
+    # For now, start dk_ivi directly without supervisor (simplified mode)
+    echo "🚀 Starting dk_ivi with embedded services in simplified mode"
+    exec /app/exec/bin/dk_ivi
 else
     echo "🐳 Starting in Standard Mode"
     echo "  Features: Standard dk_ivi only"
