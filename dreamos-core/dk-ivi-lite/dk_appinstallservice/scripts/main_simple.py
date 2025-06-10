@@ -18,8 +18,20 @@ def main():
     print(f"Processing installation config: {json_installcfg_path}")
     
     # Determine the base directory for .dk folder
-    dk_user = os.getenv("DK_USER", os.getenv("USER", "root"))
-    dk_base_dir = f"/home/{dk_user}/.dk"
+    # In container environments, use DK_CONTAINER_ROOT if available
+    dk_container_root = os.getenv("DK_CONTAINER_ROOT")
+    if dk_container_root:
+        dk_base_dir = dk_container_root
+        if not dk_base_dir.endswith("/"):
+            dk_base_dir += "/"
+        dk_base_dir = dk_base_dir.rstrip("/")  # Remove trailing slash for consistency
+        print(f"Using DK_CONTAINER_ROOT: {dk_base_dir}")
+    else:
+        # Fallback to user home directory
+        dk_user = os.getenv("DK_USER", os.getenv("USER", "root"))
+        dk_base_dir = f"/home/{dk_user}/.dk"
+        print(f"Using user home directory: {dk_base_dir}")
+    
     print(f"DK base directory: {dk_base_dir}")
     
     # Read installation config
@@ -88,27 +100,43 @@ def main():
     
     # Update installed apps/services list
     print("Updating installed apps list...")
+    print(f"Target file: {installed_file}")
     
-    # Read existing installed list
+    # Read existing installed list with detailed logging
     installed_list = []
     if os.path.exists(installed_file):
+        print(f"File exists, reading...")
         try:
             with open(installed_file, 'r') as f:
-                installed_list = json.load(f)
-            print(f"Loaded existing installed list with {len(installed_list)} items")
-        except (json.JSONDecodeError, FileNotFoundError):
-            print("Creating new installed apps list")
+                content = f.read()
+            print(f"Raw file content: {repr(content)}")
+            
+            if content.strip():
+                installed_list = json.loads(content)
+                print(f"Parsed JSON successfully: {installed_list}")
+                print(f"Number of items in list: {len(installed_list)}")
+            else:
+                print("File is empty or whitespace, starting with empty list")
+                installed_list = []
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            print(f"Error reading file: {e}")
+            print("Starting with empty list")
             installed_list = []
     else:
-        print("Creating new installed apps list")
+        print("File does not exist, creating new list")
+    
+    print(f"Current installed list: {installed_list}")
     
     # Check if app is already in the list
     app_already_installed = False
-    for item in installed_list:
+    for i, item in enumerate(installed_list):
+        print(f"Checking item {i}: {item}")
         if item.get('_id') == app_id:
             app_already_installed = True
-            print(f"App {app_id} already in installed list")
+            print(f"✅ Found app {app_id} at index {i}")
             break
+    
+    print(f"App already installed: {app_already_installed}")
     
     # Add to installed list if not already there
     if not app_already_installed:
@@ -119,12 +147,28 @@ def main():
             "installed_timestamp": time.time()
         }
         installed_list.append(installed_entry)
-        print(f"Added {name} to installed list")
+        print(f"➕ Added {name} to installed list")
+        print(f"New list: {installed_list}")
+    else:
+        print(f"App {app_id} already in list, skipping addition")
     
-    # Write updated installed list
-    with open(installed_file, 'w') as f:
-        json.dump(installed_list, f, indent=2)
-    print(f"Updated installed list: {installed_file}")
+    # Write updated installed list with verification
+    print(f"Writing to file: {installed_file}")
+    try:
+        with open(installed_file, 'w') as f:
+            json.dump(installed_list, f, indent=2)
+        print("✅ File written successfully")
+        
+        # Verify what was written
+        with open(installed_file, 'r') as f:
+            verification = f.read()
+        print(f"📋 Verification read: {repr(verification)}")
+        
+    except Exception as e:
+        print(f"❌ Error writing file: {e}")
+        return 1
+    
+    print(f"✅ Updated installed list: {installed_file}")
     
     print("=" * 50)
     print(f"✅ Installation completed successfully!")

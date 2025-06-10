@@ -452,8 +452,11 @@ Q_INVOKABLE void MarketplaceAsync::installApp(const int index)
     // Run the dk_appinstallservice script directly
     // Check if running in Docker environment
     QString appInstallScript;
-    if (QFile::exists("/app/exec/dk_ivi")) {
-        // Running in Docker - use absolute path to host-mounted scripts
+    if (QFile::exists("/app/exec/bin/dk_ivi") || QFile::exists("/app/scripts/run_appinstallservice.sh")) {
+        // Running in enhanced Docker container - use container path
+        appInstallScript = "/app/scripts/run_appinstallservice.sh";
+    } else if (QFile::exists("/app/exec/dk_ivi")) {
+        // Running in legacy Docker - use host-mounted scripts
         appInstallScript = "/home/" + DK_VCU_USERNAME + "/01_SDV/10_dreamkit_v2/dreamKIT/dreamos-core/dk-ivi-lite/scripts/run_appinstallservice.sh";
     } else {
         // Running locally - use relative path
