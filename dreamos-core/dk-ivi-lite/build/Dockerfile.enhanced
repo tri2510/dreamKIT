@@ -15,23 +15,13 @@ COPY dk-manager/src/ /app/dk-manager-src/
 COPY dk_appinstallservice/ /app/dk_appinstallservice/
 COPY tools/scripts/ /app/scripts/
 
-# Create library target directories and copy existing libraries
+# Create library target directories and copy architecture-specific libraries
 ARG TARGETARCH
 RUN mkdir -p /app/src/library/target/amd64 /app/src/library/target/arm64
 
-# Copy existing library files to amd64 directory
-COPY docker_output/library/ /app/src/library/target/amd64/
-
-# Create proper stub library for ARM64 to avoid linking errors
-RUN if [ "$TARGETARCH" = "arm64" ]; then \
-        echo "Creating stub library for ARM64 build..." && \
-        echo 'void kuksa_client_stub() {}' > /tmp/stub.c && \
-        gcc -shared -fPIC -o /app/src/library/target/arm64/libKuksaClient.so /tmp/stub.c && \
-        rm /tmp/stub.c; \
-    else \
-        echo "Using AMD64 library for both architectures..." && \
-        cp /app/src/library/target/amd64/libKuksaClient.so /app/src/library/target/arm64/; \
-    fi
+# Copy architecture-specific library files from legacy version
+COPY docker_output/library/libKuksaClient.so /app/src/library/target/amd64/
+COPY docker_output/library/libKuksaClient_arm64.so /app/src/library/target/arm64/libKuksaClient.so
 
 # Set build environment
 ENV QT_QPA_PLATFORM=offscreen
