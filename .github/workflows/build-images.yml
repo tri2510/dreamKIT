@@ -4,14 +4,17 @@ on:
   push:
     branches: [ main, optimize-integration ]
     paths:
-      - 'dreamos-core/dk-ivi-lite/Dockerfile.builder'
-      - 'dreamos-core/dk-ivi-lite/Dockerfile.runtime'
+      - 'dreamos-core/dk-ivi-lite/build/Dockerfile.builder'
+      - 'dreamos-core/dk-ivi-lite/build/Dockerfile.runtime'
+      - 'dreamos-core/dk-ivi-lite/build/Dockerfile.enhanced'
       - '.github/workflows/build-images.yml'
+      - '.github/workflows/release-dk-ivi-enhanced.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - 'dreamos-core/dk-ivi-lite/Dockerfile.builder'
-      - 'dreamos-core/dk-ivi-lite/Dockerfile.runtime'
+      - 'dreamos-core/dk-ivi-lite/build/Dockerfile.builder'
+      - 'dreamos-core/dk-ivi-lite/build/Dockerfile.runtime'
+      - 'dreamos-core/dk-ivi-lite/build/Dockerfile.enhanced'
   workflow_dispatch:
 
 env:
@@ -54,7 +57,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: dreamos-core/dk-ivi-lite
-        file: dreamos-core/dk-ivi-lite/Dockerfile.builder
+        file: dreamos-core/dk-ivi-lite/build/Dockerfile.builder
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
@@ -96,7 +99,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: dreamos-core/dk-ivi-lite
-        file: dreamos-core/dk-ivi-lite/Dockerfile.runtime
+        file: dreamos-core/dk-ivi-lite/build/Dockerfile.runtime
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }}

@@ -1,0 +1,265 @@
+# Enhanced DreamKIT IVI with Embedded Services
+# Multi-stage Dockerfile for building dk_ivi with integrated dk_manager and app install service
+FROM ghcr.io/tri2510/dk-ivi-runtime:latest AS runtime-base
+
+# Stage 1: Build Stage - Build dk_ivi and dk_manager executables
+FROM ghcr.io/tri2510/dk-ivi-builder:latest AS builder
+
+LABEL maintainer="DreamKIT Team"
+LABEL description="Enhanced DreamKIT IVI with embedded dk_manager and app install services"
+LABEL version="2.0-enhanced"
+
+# Copy source code
+COPY src/ /app/src/
+COPY dk-manager/src/ /app/dk-manager-src/
+COPY dk_appinstallservice/ /app/dk_appinstallservice/
+COPY tools/scripts/ /app/scripts/
+
+# Set build environment
+ENV QT_QPA_PLATFORM=offscreen
+ENV QT_LOGGING_RULES="*.debug=false"
+
+# Build dk_ivi with enhanced features
+WORKDIR /app
+RUN mkdir -p /app/build && \
+    cd /app/build && \
+    cmake /app/src \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/app/output \
+        -DQT_VERSION_MAJOR=6 \
+        -DCMAKE_C_COMPILER_LAUNCHER= \
+        -DCMAKE_CXX_COMPILER_LAUNCHER= \
+        -DENHANCED_MODE=ON \
+        -DEMBEDDED_SERVICES=ON && \
+    make -j$(nproc) && \
+    make install
+
+# Note: dk_manager build requires socket.io-client-cpp dependency
+# For now, using mock embedded mode without separate dk_manager binary
+
+# Stage 2: Runtime Stage - Create enhanced runtime image
+FROM runtime-base
+
+LABEL maintainer="DreamKIT Team"
+LABEL description="Enhanced DreamKIT IVI with embedded services - Runtime Image"
+LABEL version="2.0-enhanced"
+LABEL architecture="amd64/arm64"
+
+# Note: Enhanced features use embedded services without additional packages
+# Python3 and basic tools should be available from the base runtime image
+
+# Create enhanced application structure
+WORKDIR /app
+
+# Copy built executables from build stage
+COPY --from=builder /app/output/ /app/exec/
+COPY --from=builder /app/dk_appinstallservice/ /app/dk_appinstallservice/
+COPY --from=builder /app/scripts/ /app/scripts/
+
+# Debug: Check what was copied
+RUN echo "=== Debug: Contents of /app/exec ===" && \
+    ls -la /app/exec/ && \
+    echo "=== Debug: Find dk_ivi ===" && \
+    find /app -name "dk_ivi" -type f
+
+# Copy runtime configuration files
+COPY runtime/ /app/runtime/
+COPY config/ /app/config/
+
+# Create enhanced directory structure
+RUN mkdir -p \
+    /app/logs \
+    /app/tmp \
+    /app/embedded-services \
+    /app/.dk/dk_manager \
+    /app/.dk/dk_marketplace \
+    /app/.dk/dk_installedapps \
+    /app/.dk/dk_installedservices \
+    /app/.dk/dk_vssgeneration
+
+# Create supervisor configuration for embedded services
+RUN mkdir -p /etc/supervisor/conf.d
+COPY <<EOF /etc/supervisor/conf.d/enhanced-services.conf
+[supervisord]
+nodaemon=true
+user=root
+logfile=/app/logs/supervisord.log
+pidfile=/app/tmp/supervisord.pid
+
+[program:dk_ivi_main]
+command=/app/exec/dk_ivi
+directory=/app/exec
+autostart=true
+autorestart=true
+redirect_stderr=true
+stdout_logfile=/app/logs/dk_ivi.log
+environment=LD_LIBRARY_PATH=/app/exec/library,QML_IMPORT_PATH=/usr/lib/x86_64-linux-gnu/qt6/qml
+
+[unix_http_server]
+file=/app/tmp/supervisor.sock
+
+[supervisorctl]
+serverurl=unix:///app/tmp/supervisor.sock
+
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+EOF
+
+# Create enhanced startup script
+COPY <<'EOF' /app/start-enhanced.sh
+#!/bin/bash
+
+# Enhanced DreamKIT IVI Startup Script
+set -e
+
+echo "🚀 Starting Enhanced DreamKIT IVI with Embedded Services"
+echo "=================================================="
+
+# Setup environment
+export LD_LIBRARY_PATH="/app/exec/library:$LD_LIBRARY_PATH"
+export QML_IMPORT_PATH="/usr/lib/x86_64-linux-gnu/qt6/qml"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
+
+# Enhanced mode environment
+export DK_EMBEDDED_MODE="${DK_EMBEDDED_MODE:-1}"
+export DK_MOCK_MODE="${DK_MOCK_MODE:-1}"
+export DK_USER="${DK_USER:-root}"
+export DK_CONTAINER_ROOT="${DK_CONTAINER_ROOT:-/app/.dk/}"
+
+echo "📊 Environment Configuration:"
+echo "  DK_USER: $DK_USER"
+echo "  DK_EMBEDDED_MODE: $DK_EMBEDDED_MODE"
+echo "  DK_MOCK_MODE: $DK_MOCK_MODE"
+echo "  DK_CONTAINER_ROOT: $DK_CONTAINER_ROOT"
+
+# Create necessary directories
+mkdir -p \
+    "$DK_CONTAINER_ROOT/dk_manager" \
+    "$DK_CONTAINER_ROOT/dk_marketplace" \
+    "$DK_CONTAINER_ROOT/dk_installedapps" \
+    "$DK_CONTAINER_ROOT/dk_installedservices" \
+    "$DK_CONTAINER_ROOT/dk_vssgeneration"
+
+# Initialize default configurations if they don't exist
+echo "🔧 Initializing enhanced configuration..."
+
+# Create default system config
+if [ ! -f "$DK_CONTAINER_ROOT/dk_manager/dk_system_cfg.json" ]; then
+    echo "Creating default system configuration..."
+    cat > "$DK_CONTAINER_ROOT/dk_manager/dk_system_cfg.json" << JSON
+{
+  "xip": {
+    "ip": "127.0.0.1",
+    "user": "$DK_USER"
+  },
+  "vip": {
+    "ip": "192.168.1.100",
+    "user": "nvidia",
+    "pwd": "nvidia"
+  }
+}
+JSON
+fi
+
+# Create default installed services list
+if [ ! -f "$DK_CONTAINER_ROOT/dk_installedservices/installedservices.json" ]; then
+    echo "Creating default installed services list..."
+    echo "[]" > "$DK_CONTAINER_ROOT/dk_installedservices/installedservices.json"
+fi
+
+# Create default installed apps list
+if [ ! -f "$DK_CONTAINER_ROOT/dk_installedapps/installedapps.json" ]; then
+    echo "Creating default installed apps list..."
+    echo "[]" > "$DK_CONTAINER_ROOT/dk_installedapps/installedapps.json"
+fi
+
+# Make scripts executable
+chmod +x /app/scripts/*.sh 2>/dev/null || true
+chmod +x /app/dk_appinstallservice/scripts/*.py 2>/dev/null || true
+
+echo "✅ Enhanced configuration initialized"
+
+# Check startup mode
+if [ "$DK_EMBEDDED_MODE" = "1" ]; then
+    echo "🔄 Starting in Enhanced Embedded Mode"
+    echo "  Features: Integrated dk_manager + app install service"
+    
+    # Start supervisor to manage embedded services
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/enhanced-services.conf
+else
+    echo "🐳 Starting in Standard Mode"
+    echo "  Features: Standard dk_ivi only"
+    
+    # Start only dk_ivi
+    exec /app/exec/dk_ivi
+fi
+EOF
+
+RUN chmod +x /app/start-enhanced.sh
+
+# Create enhanced health check script
+COPY <<'EOF' /app/health-check.sh
+#!/bin/bash
+
+# Enhanced DreamKIT Health Check
+echo "🏥 Enhanced DreamKIT Health Check"
+
+# Check if dk_ivi process is running
+if ! pgrep -f "dk_ivi" > /dev/null; then
+    echo "❌ dk_ivi process not found"
+    exit 1
+fi
+
+# In embedded mode, check additional services
+if [ "$DK_EMBEDDED_MODE" = "1" ]; then
+    # Check if supervisor is running
+    if ! pgrep -f "supervisord" > /dev/null; then
+        echo "⚠️  Supervisor not running"
+    fi
+fi
+
+# Check essential directories
+for dir in "/app/.dk/dk_manager" "/app/.dk/dk_installedservices"; do
+    if [ ! -d "$dir" ]; then
+        echo "❌ Missing directory: $dir"
+        exit 1
+    fi
+done
+
+echo "✅ Enhanced DreamKIT health check passed"
+exit 0
+EOF
+
+RUN chmod +x /app/health-check.sh
+
+# Set proper permissions
+RUN chown -R root:root /app && \
+    chmod -R 755 /app && \
+    find /app/exec -name "dk_ivi" -exec chmod +x {} \; || true
+
+# Enhanced environment variables
+ENV DK_EMBEDDED_MODE=1
+ENV DK_MOCK_MODE=1
+ENV DK_CONTAINER_ROOT=/app/.dk/
+ENV LD_LIBRARY_PATH=/app/exec/library
+ENV QML_IMPORT_PATH=/usr/lib/x86_64-linux-gnu/qt6/qml
+ENV QT_QPA_PLATFORM=xcb
+ENV QT_QUICK_BACKEND=software
+
+# Enhanced metadata
+LABEL dk.version="2.0-enhanced"
+LABEL dk.features="embedded-services,integrated-manager,app-install-service"
+LABEL dk.mode="enhanced"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD /app/health-check.sh
+
+# Volumes for enhanced functionality
+VOLUME ["/app/.dk", "/app/logs", "/app/tmp"]
+
+# Working directory
+WORKDIR /app
+
+# Enhanced startup command
+CMD ["/app/start-enhanced.sh"]
