@@ -90,13 +90,13 @@ logfile=/app/logs/supervisord.log
 pidfile=/app/tmp/supervisord.pid
 
 [program:dk_ivi_main]
-command=/app/exec/dk_ivi
-directory=/app/exec
+command=/app/exec/bin/dk_ivi
+directory=/app/exec/bin
 autostart=true
 autorestart=true
 redirect_stderr=true
 stdout_logfile=/app/logs/dk_ivi.log
-environment=LD_LIBRARY_PATH=/app/exec/library,QML_IMPORT_PATH=/usr/lib/x86_64-linux-gnu/qt6/qml
+environment=LD_LIBRARY_PATH=/app/exec/bin:/app/exec/library,QML_IMPORT_PATH=/usr/lib/x86_64-linux-gnu/qt6/qml
 
 [unix_http_server]
 file=/app/tmp/supervisor.sock
@@ -119,7 +119,7 @@ echo "🚀 Starting Enhanced DreamKIT IVI with Embedded Services"
 echo "=================================================="
 
 # Setup environment
-export LD_LIBRARY_PATH="/app/exec/library:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="/app/exec/bin:/app/exec/library:$LD_LIBRARY_PATH"
 export QML_IMPORT_PATH="/usr/lib/x86_64-linux-gnu/qt6/qml"
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-xcb}"
 
@@ -194,7 +194,7 @@ else
     echo "  Features: Standard dk_ivi only"
     
     # Start only dk_ivi
-    exec /app/exec/dk_ivi
+    exec /app/exec/bin/dk_ivi
 fi
 EOF
 
@@ -238,13 +238,13 @@ RUN chmod +x /app/health-check.sh
 # Set proper permissions
 RUN chown -R root:root /app && \
     chmod -R 755 /app && \
-    find /app/exec -name "dk_ivi" -exec chmod +x {} \; || true
+    chmod +x /app/exec/bin/dk_ivi
 
 # Enhanced environment variables
 ENV DK_EMBEDDED_MODE=1
 ENV DK_MOCK_MODE=1
 ENV DK_CONTAINER_ROOT=/app/.dk/
-ENV LD_LIBRARY_PATH=/app/exec/library
+ENV LD_LIBRARY_PATH=/app/exec/bin:/app/exec/library
 ENV QML_IMPORT_PATH=/usr/lib/x86_64-linux-gnu/qt6/qml
 ENV QT_QPA_PLATFORM=xcb
 ENV QT_QUICK_BACKEND=software
