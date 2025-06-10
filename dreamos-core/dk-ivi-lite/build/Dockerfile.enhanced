@@ -33,11 +33,7 @@ RUN mkdir -p /app/build && \
     cmake /app/src \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/app/output \
-        -DQT_VERSION_MAJOR=6 \
-        -DCMAKE_C_COMPILER_LAUNCHER= \
-        -DCMAKE_CXX_COMPILER_LAUNCHER= \
-        -DENHANCED_MODE=ON \
-        -DEMBEDDED_SERVICES=ON && \
+        -DQT_VERSION_MAJOR=6 && \
     make -j$(nproc) && \
     make install
 
