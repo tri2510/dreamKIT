@@ -49,9 +49,8 @@ LABEL description="Enhanced DreamKIT IVI with embedded services - Runtime Image"
 LABEL version="2.0-enhanced"
 LABEL architecture="amd64/arm64"
 
-# Install supervisor for managing embedded services
-RUN apt-get update && apt-get install -y supervisor && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Note: Enhanced features use embedded services without additional packages
+# For simplicity, running dk_ivi directly without supervisor for now
 
 # Create enhanced application structure
 WORKDIR /app
@@ -267,5 +266,5 @@ VOLUME ["/app/.dk", "/app/logs", "/app/tmp"]
 # Working directory
 WORKDIR /app
 
-# Enhanced startup command
-CMD ["/app/start-enhanced.sh"]
+# Enhanced startup command - simplified to run dk_ivi directly
+CMD ["/app/exec/bin/dk_ivi"]

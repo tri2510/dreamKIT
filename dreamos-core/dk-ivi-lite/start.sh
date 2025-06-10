@@ -69,25 +69,33 @@ quick_run() {
     # Use similar logic to the enhanced dk_run.sh installation script
     echo -e "${BLUE}Starting core services...${NC}"
     
-    # Start SDV Runtime if not running
-    if ! docker ps --format "{{.Names}}" | grep -q "^sdv-runtime$"; then
-        echo -e "${BLUE}Starting SDV Runtime...${NC}"
-        docker run -d -it --name sdv-runtime --restart unless-stopped \
-            -e USER="$USER" \
-            -e RUNTIME_NAME="DreamKIT_BGSV" \
-            -p 55555:55555 \
-            -e ARCH="amd64" \
-            ghcr.io/tri2510/sdv-runtime:latest >/dev/null 2>&1 || {
-                echo -e "${YELLOW}⚠ Failed to start SDV Runtime (may need to pull image first)${NC}"
-            }
-    else
-        echo -e "${GREEN}✓ SDV Runtime already running${NC}"
-    fi
-    
-    # Check if enhanced image exists locally
+    # Check if enhanced image exists locally first
     if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^ghcr.io/tri2510/dk-ivi-enhanced:latest$"; then
         echo -e "${YELLOW}Enhanced image not found locally. Building first...${NC}"
         build_enhanced || return 1
+    fi
+    
+    # Start SDV Runtime if not running (use local image if available)
+    if ! docker ps --format "{{.Names}}" | grep -q "^sdv-runtime$"; then
+        echo -e "${BLUE}Starting SDV Runtime...${NC}"
+        # Try local sdv-runtime first, then remote if available
+        local sdv_image="ghcr.io/tri2510/sdv-runtime:latest"
+        if ! docker images --format "{{.Repository}}:{{.Tag}}" | grep -q "^ghcr.io/tri2510/sdv-runtime:latest$"; then
+            # Use alternative or skip if no local image
+            echo -e "${YELLOW}⚠ SDV Runtime image not found locally. Continuing without it...${NC}"
+            echo -e "${BLUE}(You can manually pull: docker pull ghcr.io/tri2510/sdv-runtime:latest)${NC}"
+        else
+            docker run -d -it --name sdv-runtime --restart unless-stopped \
+                -e USER="$USER" \
+                -e RUNTIME_NAME="DreamKIT_BGSV" \
+                -p 55555:55555 \
+                -e ARCH="amd64" \
+                $sdv_image >/dev/null 2>&1 || {
+                    echo -e "${YELLOW}⚠ Failed to start SDV Runtime${NC}"
+                }
+        fi
+    else
+        echo -e "${GREEN}✓ SDV Runtime already running${NC}"
     fi
     
     # Enable X11 forwarding
