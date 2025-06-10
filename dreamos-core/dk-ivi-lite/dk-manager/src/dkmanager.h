@@ -18,6 +18,8 @@ public:
     explicit DkManger();
     ~DkManger();
     void Start();
+    void SetEmbeddedMode(bool enabled) { m_embeddedMode = enabled; }
+    void SetMockMode(bool enabled) { m_mockMode = enabled; }
 
 public Q_SLOTS:
 
@@ -53,6 +55,8 @@ private:
     QTimer *m_timer;
     bool isSocketConnected = false;
     bool isInternetConnected = false;
+    bool m_embeddedMode = false;
+    bool m_mockMode = false;
 };
 
 #endif // DKMANAGER_H

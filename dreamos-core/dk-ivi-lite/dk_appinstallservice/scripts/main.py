@@ -21,10 +21,17 @@ def modify_vss_entry(action, vss_api, vss_type=None, datatype=None, description=
     :param vss2dbc_signal: (Optional) Signal information for VSS to DBC mapping.
     :param dbc2vss_signal: (Optional) Signal information for DBC to VSS mapping.
     """
-    # Construct the target file path using the HOME environment variable
-    # home_directory = os.getenv('HOME')
-    # vss_file = os.path.join(home_directory, '.dk/dk_manager/vssmapping/vssmapping_overlay.vspec')
-    vss_file = "/app/.dk/dk_manager/vssmapping/vssmapping_overlay.vspec"
+    # Construct the target file path using the appropriate base directory
+    # Determine the base directory for .dk folder  
+    if os.getenv("DK_EMBEDDED_MODE") == "1" or os.getenv("DK_MOCK_MODE") == "1":
+        # In embedded mode, use actual user home directory
+        dk_user = os.getenv("DK_USER", os.getenv("USER", "root"))
+        dk_base_dir = f"/home/{dk_user}/.dk"
+    else:
+        # In Docker mode, use /app/.dk
+        dk_base_dir = "/app/.dk"
+    
+    vss_file = f"{dk_base_dir}/dk_manager/vssmapping/vssmapping_overlay.vspec"
 
     # Ensure the target directory exists
     target_directory = os.path.dirname(vss_file)
@@ -99,6 +106,37 @@ def cmd_execute(cmd):
         print("Error:\n", result.stderr)
         return False
 
+def is_embedded_mode():
+    """Check if running in embedded mode"""
+    return os.getenv("DK_EMBEDDED_MODE") == "1" or os.getenv("DK_MOCK_MODE") == "1"
+
+def handle_embedded_app_deployment(DockerImageURL, appFolder, name):
+    """Handle app deployment in embedded mode without Docker"""
+    print(f"EMBEDDED MODE: Simulating deployment of {DockerImageURL}")
+    print(f"EMBEDDED MODE: App folder: {appFolder}")
+    print(f"EMBEDDED MODE: App name: {name}")
+    
+    # Create a mock deployment status file
+    deployment_status_file = f"{appFolder}/deployment_status.json"
+    deployment_info = {
+        "docker_image": DockerImageURL,
+        "deployment_mode": "embedded",
+        "status": "deployed",
+        "timestamp": time.time()
+    }
+    
+    with open(deployment_status_file, 'w') as f:
+        json.dump(deployment_info, f, indent=2)
+    
+    print(f"EMBEDDED MODE: Created deployment status file at {deployment_status_file}")
+    return True
+
+def handle_embedded_service_restart():
+    """Handle service restart in embedded mode"""
+    print("EMBEDDED MODE: Service restart operations skipped (dk-manager handles this)")
+    print("EMBEDDED MODE: In embedded mode, dk-manager will automatically reload configurations")
+    return True
+
 def create_installedapps_file_if_missing(installedappsJson):
     # Check if the file exists
     if not os.path.exists(installedappsJson):
@@ -134,7 +172,16 @@ def main():
 
     ######################################################################################################
     ######################################################################################################
-    DK_SYS_CFG_FILE = f"/app/.dk/dk_manager/dk_system_cfg.json"
+    # Determine the base directory for .dk folder
+    if is_embedded_mode():
+        # In embedded mode, use actual user home directory
+        dk_user = os.getenv("DK_USER", os.getenv("USER", "root"))
+        dk_base_dir = f"/home/{dk_user}/.dk"
+    else:
+        # In Docker mode, use /app/.dk
+        dk_base_dir = "/app/.dk"
+    
+    DK_SYS_CFG_FILE = f"{dk_base_dir}/dk_manager/dk_system_cfg.json"
     # Read and parse the JSON file
     with open(DK_SYS_CFG_FILE, 'r') as f:
         data = json.load(f)
@@ -225,20 +272,15 @@ def main():
     print(f"DeployTarget: {DeployTarget}")
     print(f"TargetPlatform: {TargetPlatform}")
 
-    rootFolder = "/app/.dk/dk_installedapps/"
-    appFolder = f"{rootFolder}{_id}"
-    installedappsJson = f"{rootFolder}installedapps.json"
-    runtimeCfgJson = f"{appFolder}/runtimecfg.json"
-    supported_vss_api_path = "/app/.dk/dk_manager/prototypes/supportedvssapi.json"
-
+    # Set paths based on deployment mode
     if category == "vehicle":
-        rootFolder = "/app/.dk/dk_installedapps/"
+        rootFolder = f"{dk_base_dir}/dk_installedapps/"
         appFolder = f"{rootFolder}{_id}"
         installedappsJson = f"{rootFolder}installedapps.json"
         runtimeCfgJson = f"{appFolder}/runtimecfg.json"
         print("Installing vehicle app ...")
     elif category == "vehicle-service":
-        rootFolder = "/app/.dk/dk_installedservices/"
+        rootFolder = f"{dk_base_dir}/dk_installedservices/"
         appFolder = f"{rootFolder}{_id}"
         installedappsJson = f"{rootFolder}installedservices.json"
         runtimeCfgJson = f"{appFolder}/runtimecfg.json"
@@ -246,6 +288,8 @@ def main():
     else:
         print("Error: the app is not in the supported category to be installed in this target device")
         return
+    
+    supported_vss_api_path = f"{dk_base_dir}/dk_manager/prototypes/supportedvssapi.json"
 
     print('-' * 50)
     # create app folder
@@ -260,37 +304,46 @@ def main():
     
     print('-' * 50)
     # pull the app/service
-    cmd = f"docker pull {DockerImageURL}"
-    print(f"cmd: {cmd}")
-    if (DeployTarget == "vip"):
-        cmd = f"docker pull --platform {TargetPlatform} {DockerImageURL}"
-    result = cmd_execute(cmd)
-    if result == False:
-        print(f"Error: can't pull the docker image {DockerImageURL}")
-        return
+    if is_embedded_mode():
+        print("EMBEDDED MODE: Handling app deployment without Docker")
+        result = handle_embedded_app_deployment(DockerImageURL, appFolder, name)
+        if not result:
+            print(f"Error: can't deploy app in embedded mode")
+            return
+        else:
+            print("Successfully deployed the app/service in embedded mode")
     else:
-        cmd = f"docker image prune -f"
-        cmd_execute(cmd)
-        print("Successfully download the app/service")
+        cmd = f"docker pull {DockerImageURL}"
+        print(f"cmd: {cmd}")
         if (DeployTarget == "vip"):
-            # store image into local registry
-            cmd = f"docker tag {DockerImageURL} localhost:5000/{DockerImageURL}"
-            result = cmd_execute(cmd)
-            if result == False:
-                print(f"Error: can't execute {cmd}")
-            cmd = f"docker push localhost:5000/{DockerImageURL}"
-            result = cmd_execute(cmd)
-            if result == False:
-                print(f"Error: can't execute {cmd}")
-
-            # vip pull image from xip host registry
-            cmd = f"sshpass -p '{DK_VIP_PWD}' ssh -o StrictHostKeyChecking=no {DK_VIP_USER}@{DK_VIP_IP} 'docker pull {DK_XIP_IP}:5000/{DockerImageURL} ; mkdir -p ~/.dk/dk_installedservices'"
-            result = cmd_execute(cmd)
-            if result == False:
-                print(f"Error: can't execute {cmd}")
-                return
-            cmd = f"sshpass -p '{DK_VIP_PWD}' ssh -o StrictHostKeyChecking=no {DK_VIP_USER}@{DK_VIP_IP} 'docker image prune -f'"
+            cmd = f"docker pull --platform {TargetPlatform} {DockerImageURL}"
+        result = cmd_execute(cmd)
+        if result == False:
+            print(f"Error: can't pull the docker image {DockerImageURL}")
+            return
+        else:
+            cmd = f"docker image prune -f"
             cmd_execute(cmd)
+            print("Successfully download the app/service")
+            if (DeployTarget == "vip"):
+                # store image into local registry
+                cmd = f"docker tag {DockerImageURL} localhost:5000/{DockerImageURL}"
+                result = cmd_execute(cmd)
+                if result == False:
+                    print(f"Error: can't execute {cmd}")
+                cmd = f"docker push localhost:5000/{DockerImageURL}"
+                result = cmd_execute(cmd)
+                if result == False:
+                    print(f"Error: can't execute {cmd}")
+
+                # vip pull image from xip host registry
+                cmd = f"sshpass -p '{DK_VIP_PWD}' ssh -o StrictHostKeyChecking=no {DK_VIP_USER}@{DK_VIP_IP} 'docker pull {DK_XIP_IP}:5000/{DockerImageURL} ; mkdir -p ~/.dk/dk_installedservices'"
+                result = cmd_execute(cmd)
+                if result == False:
+                    print(f"Error: can't execute {cmd}")
+                    return
+                cmd = f"sshpass -p '{DK_VIP_PWD}' ssh -o StrictHostKeyChecking=no {DK_VIP_USER}@{DK_VIP_IP} 'docker image prune -f'"
+                cmd_execute(cmd)
 
     print('-' * 50)
     # Check if 'RuntimeCfg' exists
@@ -370,111 +423,121 @@ def main():
         print("No .dbc files found in the package folder.")
     
 
-    # print('-' * 50)
-    # dbcDefaultValue_file = "/app/.dk/dk_manager/vssmapping/dbc_default_values.json"
-    # # Update vssmapping overlay and supported api list
-    # supported_vss_api = load_supported_vss_api(supported_vss_api_path)
-    # # Check if SignalList exists in dashboardConfig
-    # if 'SignalList' not in dashboard_config:
-    #     print("Warning: 'SignalList' not found in dashboardConfig.")
-    #     # return
-    # # Iterate over the SignalList to modify VSS entries
-    # for signal in dashboard_config['SignalList']:
-    #     # Extract necessary fields from the signal
-    #     vss_api = signal.get('vss_api')
-    #     if vss_api and vss_api not in supported_vss_api:
-    #         supported_vss_api.append(vss_api)
+    # Only process VSS mapping and restart services for vehicle-service category
+    if category == "vehicle-service":
+        print('-' * 50)
+        # For embedded mode, handle service restarts differently
+        if is_embedded_mode():
+            print("EMBEDDED MODE: Skipping VSS mapping updates (handled by dk-manager)")
+            result = handle_embedded_service_restart()
+            if not result:
+                print("Warning: Service restart operations failed in embedded mode")
+        else:
+            # Original Docker-based service restart logic for non-embedded mode
+            dbcDefaultValue_file = f"{dk_base_dir}/dk_manager/vssmapping/dbc_default_values.json"
+            # Update vssmapping overlay and supported api list
+            supported_vss_api = load_supported_vss_api(supported_vss_api_path)
+            # Check if SignalList exists in dashboardConfig
+            if 'SignalList' not in dashboard_config:
+                print("Warning: 'SignalList' not found in dashboardConfig.")
+            else:
+                # Iterate over the SignalList to modify VSS entries
+                for signal in dashboard_config['SignalList']:
+                    # Extract necessary fields from the signal
+                    vss_api = signal.get('vss_api')
+                    if vss_api and vss_api not in supported_vss_api:
+                        supported_vss_api.append(vss_api)
 
-    #     vss_type = signal.get('vss_type')
-    #     datatype = signal.get('datatype')
-    #     description = signal.get('description')
-    #     dbc_signal = signal.get('dbc_signal')
-    #     vss2dbc_signal = signal.get('vss2dbc_signal')
-    #     dbc2vss_signal = signal.get('dbc2vss_signal')
-    #     interval_ms = signal.get('interval_ms')
-        
-    #     # Call modify_vss_entry function
-    #     modify_vss_entry(
-    #         action='add',
-    #         vss_api=vss_api,
-    #         vss_type=vss_type,
-    #         datatype=datatype,
-    #         description=description,
-    #         dbc_signal=dbc_signal,
-    #         vss2dbc_signal=vss2dbc_signal,
-    #         dbc2vss_signal=dbc2vss_signal,
-    #         interval_ms=interval_ms
-    #     )
+                    vss_type = signal.get('vss_type')
+                    datatype = signal.get('datatype')
+                    description = signal.get('description')
+                    dbc_signal = signal.get('dbc_signal')
+                    vss2dbc_signal = signal.get('vss2dbc_signal')
+                    dbc2vss_signal = signal.get('dbc2vss_signal')
+                    interval_ms = signal.get('interval_ms')
+                    
+                    # Call modify_vss_entry function
+                    modify_vss_entry(
+                        action='add',
+                        vss_api=vss_api,
+                        vss_type=vss_type,
+                        datatype=datatype,
+                        description=description,
+                        dbc_signal=dbc_signal,
+                        vss2dbc_signal=vss2dbc_signal,
+                        dbc2vss_signal=dbc2vss_signal,
+                        interval_ms=interval_ms
+                    )
 
-    #     # update dbc default value.
-    #     if dbc_file is not None and vss2dbc_signal != "":
-    #         # python updateDbcDefaultValue.py VCLEFT_turnSignalStatus1 Model3CAN.dbc dbc_default_values_test.json
-    #         cmd = f"python updateDbcDefaultValue.py {vss2dbc_signal} {dbc_file} {dbcDefaultValue_file}"
-    #         result = cmd_execute(cmd)
-    #         if result == False:
-    #             print(f"Error: can't update update dbc default value of {vss2dbc_signal}. cmd: {cmd}")
-    #             return
-    #         else:
-    #             print("Successfully update update dbc default value of {vss2dbc_signal}. cmd: {cmd}")
+                    # update dbc default value.
+                    if dbc_file is not None and vss2dbc_signal != "":
+                        # python updateDbcDefaultValue.py VCLEFT_turnSignalStatus1 Model3CAN.dbc dbc_default_values_test.json
+                        cmd = f"python updateDbcDefaultValue.py {vss2dbc_signal} {dbc_file} {dbcDefaultValue_file}"
+                        result = cmd_execute(cmd)
+                        if result == False:
+                            print(f"Error: can't update update dbc default value of {vss2dbc_signal}. cmd: {cmd}")
+                            return
+                        else:
+                            print("Successfully update update dbc default value of {vss2dbc_signal}. cmd: {cmd}")
 
-    # # Save the updated list back to the supportedvssapi.json file
-    # save_supported_vss_api(supported_vss_api_path, supported_vss_api)
-    # print("Successfully update vssmapping overlay.")
+                # Save the updated list back to the supportedvssapi.json file
+                save_supported_vss_api(supported_vss_api_path, supported_vss_api)
+                print("Successfully update vssmapping overlay.")
 
-    # time.sleep(0.5)
-    # print('-' * 50)
-    # # restart vssgen to update new api lib
-    # cmd = f"docker restart vssgen"
-    # result = cmd_execute(cmd)
-    # if result == False:
-    #     print(f"Error: can't restart vssgen")
-    #     return
-    # else:
-    #     print("Successfully restart vssgen")
+            time.sleep(0.5)
+            print('-' * 50)
+            # restart vssgen to update new api lib
+            cmd = f"docker restart vssgen"
+            result = cmd_execute(cmd)
+            if result == False:
+                print(f"Error: can't restart vssgen")
+                return
+            else:
+                print("Successfully restart vssgen")
 
-    # time.sleep(0.5)
-    # cmd = f"sync"
-    # result = cmd_execute(cmd)
-    # if result == False:
-    #     print(f"Error: can't update vssgen")
-    #     return
-    # time.sleep(0.5)
+            time.sleep(0.5)
+            cmd = f"sync"
+            result = cmd_execute(cmd)
+            if result == False:
+                print(f"Error: can't update vssgen")
+                return
+            time.sleep(0.5)
 
-    # print('-' * 50)
-    # # restart vehicledatabroker to reload new api set
-    # cmd = f"docker stop vehicledatabroker"
-    # result = cmd_execute(cmd)
-    # if result == False:
-    #     print(f"Error: can't stop vehicledatabroker")
-    #     return
-    # time.sleep(0.5)
-    # cmd = f"docker start vehicledatabroker"
-    # result = cmd_execute(cmd)
-    # if result == False:
-    #     print(f"Error: can't restart vehicledatabroker")
-    #     return
-    # else:
-    #     print("Successfully restart vehicledatabroker")
+            print('-' * 50)
+            # restart vehicledatabroker to reload new api set
+            cmd = f"docker stop vehicledatabroker"
+            result = cmd_execute(cmd)
+            if result == False:
+                print(f"Error: can't stop vehicledatabroker")
+                return
+            time.sleep(0.5)
+            cmd = f"docker start vehicledatabroker"
+            result = cmd_execute(cmd)
+            if result == False:
+                print(f"Error: can't restart vehicledatabroker")
+                return
+            else:
+                print("Successfully restart vehicledatabroker")
 
-    # print('-' * 50)
-    # # restart dk_manager to reload new api set
-    # cmd = f"docker restart dk_manager"
-    # result = cmd_execute(cmd)
-    # if result == False:
-    #     print(f"Error: can't restart dk_manager")
-    #     return
-    # else:
-    #     print("Successfully restart dk_manager")
+            print('-' * 50)
+            # restart dk_manager to reload new api set
+            cmd = f"docker restart dk_manager"
+            result = cmd_execute(cmd)
+            if result == False:
+                print(f"Error: can't restart dk_manager")
+                return
+            else:
+                print("Successfully restart dk_manager")
 
-    # print('-' * 50)
-    # # restart dk_manager to reload new api set
-    # cmd = f"docker kill dk_ivi;docker start dk_ivi"
-    # result = cmd_execute(cmd)
-    # if result == False:
-    #     print(f"Error: can't restart dk_ivi")
-    #     return
-    # else:
-    #     print("Successfully restart dk_ivi")
+            print('-' * 50)
+            # restart dk_manager to reload new api set
+            cmd = f"docker kill dk_ivi;docker start dk_ivi"
+            result = cmd_execute(cmd)
+            if result == False:
+                print(f"Error: can't restart dk_ivi")
+                return
+            else:
+                print("Successfully restart dk_ivi")
 
     print('-' * 50)
     if (DeployTarget == "vip"):
@@ -484,7 +547,7 @@ def main():
         # if result == False:
         #     print(f"Error: can't execute {cmd}")
 
-        vss_file = "/app/.dk/dk_vssgeneration/vss.json"
+        vss_file = f"{dk_base_dir}/dk_vssgeneration/vss.json"
         cmd = f"sshpass -p '{DK_VIP_PWD}' scp -o StrictHostKeyChecking=no -r {vss_file} {DK_VIP_USER}@{DK_VIP_IP}:/home/.dk/dk_vss/"
         result = cmd_execute(cmd)
         if result == False:

@@ -13,6 +13,7 @@ find_package(Qt6 6.2 REQUIRED COMPONENTS Quick)
 qt_add_executable(dk_ivi
     main/main.cpp
     main/config.cpp
+    main/dkmanager_subprocess.cpp
     controls/controls.cpp
     digitalauto/digitalauto.cpp
     marketplace/marketplace.cpp
