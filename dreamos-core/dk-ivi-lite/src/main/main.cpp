@@ -13,6 +13,7 @@
 #include "../installedvapps/installedvapps.hpp"
 #include "../controls/controls.hpp"
 #include "../library/vapiclient/vapiclient.hpp"
+#include "../protocolbridge/protocolbridge.h"
 
 Q_LOGGING_CATEGORY(mainLog, "dk.ivi.main")
 
@@ -86,6 +87,9 @@ int main(int argc, char *argv[])
     qmlRegisterType<ServicesAsync>("ServicesAsync", 1, 0, "ServicesAsync");
     qmlRegisterType<VappsAsync>("VappsAsync", 1, 0, "VappsAsync");
     qmlRegisterType<ControlsAsync>("ControlsAsync", 1, 0, "ControlsAsync");
+    
+    // Register Protocol Bridge QML types
+    ProtocolBridge::registerQMLTypes();
 
     QQmlApplicationEngine engine;
     
@@ -100,7 +104,10 @@ int main(int argc, char *argv[])
         {"debugMode", config.enableDebug()}
     }));
     
-    qCInfo(mainLog) << "Configuration exposed to QML context";
+    // Expose Protocol Bridge to QML context
+    ProtocolBridge::exposeToQML(rootContext);
+    
+    qCInfo(mainLog) << "Configuration and Protocol Bridge exposed to QML context";
     
     const QUrl url1(QStringLiteral("qrc:/untitled2/main/main.qml"));
     const QUrl url2(QStringLiteral("qrc:/main/main.qml"));

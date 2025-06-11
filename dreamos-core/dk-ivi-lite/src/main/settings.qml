@@ -742,6 +742,7 @@ Rectangle {
                     Loader { source: "../digitalauto/digitalauto.qml" }
                     Loader { source: "../installedvapps/installedvapps.qml" }
                     Loader { source: "../installedservices/installedservices.qml" }
+                    Loader { source: "../protocolbridge/protocolbridge.qml" }
                 }
             }
         }
@@ -754,5 +755,6 @@ Rectangle {
         ListElement { title: "App Test Deployment" }
         ListElement { title: "Vehicle App" }
         ListElement { title: "Vehicle Service" }
+        ListElement { title: "Protocol Bridge" }
     }
 }

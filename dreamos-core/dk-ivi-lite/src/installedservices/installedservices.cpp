@@ -106,7 +106,8 @@ void CheckAppRunningThread::checkRunningAppSts()
         cmd += appStsLog;
         // cmd += " & ";
     }
-    system(cmd.toUtf8());
+    int result = system(cmd.toUtf8());
+    (void)result; // Suppress unused variable warning
 
     // qDebug() << "checkRunningAppSts cmd: " << cmd;
     
@@ -180,7 +181,8 @@ void InstalledServicesCheckThread::run()
                 cmd += "sshpass -p '" + DK_VIP_PWD + "' ssh -o StrictHostKeyChecking=no " + DK_VIP_USER + "@" + DK_VIP_IP + " 'docker ps' ) > ";
                 cmd += dockerps;
             }
-            system(cmd.toUtf8()); 
+            int result = system(cmd.toUtf8());
+    (void)result; // Suppress unused variable warning 
             QThread::msleep(10);
             QFile MyFile(dockerps);
             MyFile.open(QIODevice::ReadWrite);
@@ -194,7 +196,8 @@ void InstalledServicesCheckThread::run()
                 Q_EMIT resultReady(m_appId, false, "<b>"+m_appName+"</b>" + " is NOT started successfully.<br><br>Please contact the car OEM for more information !!!");
             }
             cmd = "> " + dockerps;
-            system(cmd.toUtf8()); 
+            result = system(cmd.toUtf8());
+    (void)result; // Suppress unused variable warning 
 
             m_istriggeredAppStart = false;
             m_appId.clear();
@@ -289,7 +292,8 @@ Q_INVOKABLE void ServicesAsync::openAppEditor(int idx)
     cmd = "mkdir -p " + vsCodeUserDataFolder + ";";
     cmd += "code " + thisServiceFolder + " --no-sandbox --user-data-dir=" + vsCodeUserDataFolder + ";";
     qDebug() << cmd;
-    system(cmd.toUtf8());
+    int result = system(cmd.toUtf8());
+    (void)result; // Suppress unused variable warning
 }
 
 Q_INVOKABLE void ServicesAsync::initInstalledServicesFromDB()
@@ -666,6 +670,7 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
         
         QString safeParams = getSafeDockerParam(runtimecfgfile);
         QString audioParams = getAudioParam(runtimecfgfile);
+        int result;
 
         if (installedServicesList[appIdx].deploytarget == "vip") {
             if (m_is_vip_connected) {
@@ -674,7 +679,10 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
                 // start service
                 cmd += "sshpass -p '" + DK_VIP_PWD + "' ssh -o StrictHostKeyChecking=no " + DK_VIP_USER + "@" + DK_VIP_IP + " 'docker kill " + appId +  ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 --network host  --privileged -v /home/.dk/dk_fota:/home/.dk/dk_fota:ro -v /home/.dk/dk_vss:/home/.dk/dk_vss:ro -v /home/.dk/dk_installedservices/" +     appId + ":/app/runtime " + DK_XIP_IP + ":5000/" + installedServicesList[appIdx].packagelink + " '";
                 qDebug() << cmd;
-                system(cmd.toUtf8());
+                result = system(cmd.toUtf8());
+                if (result != 0) {
+                    qDebug() << "Command execution failed with code:" << result;
+                }
             }
             else {
                 qDebug() << "VIP is not connected. Cannot start the service.";
@@ -693,7 +701,10 @@ Q_INVOKABLE void ServicesAsync::executeServices(int appIdx, const QString name, 
                 return;
             }
             
-            system(cmd.toUtf8());
+            result = system(cmd.toUtf8());
+            if (result != 0) {
+                qDebug() << "Command execution failed with code:" << result;
+            }
         }
 
         if (m_workerThread) {
@@ -854,17 +865,18 @@ Q_INVOKABLE void ServicesAsync::removeServices(const int index)
 
     QString cmd;
     QString appId = installedServicesList[index].id;
+    int result;
     // delete service
     if (installedServicesList[index].deploytarget == "vip") {
         cmd = "sshpass -p '" + DK_VIP_PWD + "' ssh -o StrictHostKeyChecking=no " + DK_VIP_USER + "@" + DK_VIP_IP + " 'docker kill " + appId + ";docker rm " + appId + "'";
         qDebug() << cmd;
-        int result = system(cmd.toUtf8());
+        result = system(cmd.toUtf8());
         (void)result; // Suppress unused variable warning
     }
     else {
         cmd = "docker kill " + appId + ";docker rm " + appId;
         qDebug() << cmd;
-        int result = system(cmd.toUtf8());
+        result = system(cmd.toUtf8());
         (void)result; // Suppress unused variable warning
     }
 }

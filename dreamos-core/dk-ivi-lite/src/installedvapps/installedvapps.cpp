@@ -52,7 +52,8 @@ void InstalledVappsCheckThread::run()
         if (m_istriggeredAppStart && !m_appId.isEmpty() && !m_appName.isEmpty()) {
             QThread::msleep(3000); // workaround: wait 2s for the app to start. TODO: consider to check if the start time is more than 2s
             cmd = "docker ps > " + dockerps;
-            system(cmd.toUtf8()); 
+            int result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning 
             QThread::msleep(10);
             QFile MyFile(dockerps);
             MyFile.open(QIODevice::ReadWrite);
@@ -66,7 +67,8 @@ void InstalledVappsCheckThread::run()
                 Q_EMIT resultReady(m_appId, false, "<b>"+m_appName+"</b>" + " is NOT started successfully.<br><br>Please contact the car OEM for more information !!!");
             }
             cmd = "> " + dockerps;
-            system(cmd.toUtf8()); 
+            result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning 
 
             m_istriggeredAppStart = false;
             m_appId.clear();
@@ -110,7 +112,8 @@ Q_INVOKABLE void VappsAsync::openAppEditor(int idx)
     cmd = "mkdir -p " + vsCodeUserDataFolder + ";";
     cmd += "code " + thisServiceFolder + " --no-sandbox --user-data-dir=" + vsCodeUserDataFolder + ";";
     qDebug() << cmd;
-    system(cmd.toUtf8());
+    int result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning
 }
 
 Q_INVOKABLE void VappsAsync::initInstalledVappsFromDB()
@@ -233,10 +236,12 @@ Q_INVOKABLE void VappsAsync::executeServices(int appIdx, const QString name, con
 {
     QString dockerps = DK_INSTALLED_APPS_FOLDER + "listappscmd.log";
     QString cmd = "";
+    int result;
     if (isSubscribed) {
         {
             cmd = "docker ps > " + dockerps;
-            system(cmd.toUtf8());            
+            result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning            
             QThread::msleep(100);
             QFile MyFile(dockerps);
             MyFile.open(QIODevice::ReadWrite);
@@ -244,11 +249,13 @@ Q_INVOKABLE void VappsAsync::executeServices(int appIdx, const QString name, con
             if (in.readAll().contains(appId, Qt::CaseSensitivity::CaseSensitive)) {
                 qDebug() << appId << " is already open";
                 cmd = "> " + dockerps;
-                system(cmd.toUtf8()); 
+                result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning 
                 return;
             }
             cmd = "> " + dockerps;
-            system(cmd.toUtf8()); 
+            result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning 
         }
 
         // QString cmd;
@@ -262,18 +269,20 @@ Q_INVOKABLE void VappsAsync::executeServices(int appIdx, const QString name, con
         // start digital.auto app
         cmd += "docker kill " + appId + ";docker rm " + appId + ";docker run -d -it --name " + appId + " --log-opt max-size=10m --log-opt max-file=3 -v /home/" + DK_VCU_USERNAME + "/.dk/dk_installedapps/" + appId + ":/app/runtime -v /home/" + DK_VCU_USERNAME + "/.dk/dk_vssgeneration/vehicle_gen:/home/vss/vehicle_gen:ro --network host " + safeParams + audioParams + uiParams + installedVappsList[appIdx].packagelink;
         qDebug() << cmd;
-        system(cmd.toUtf8());
+        result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning
 
         if (m_workerThread) {
             m_workerThread->triggerCheckAppStart(appId, name);
         }
     }
     else {
-        QString cmd;
+        cmd = "";
         cmd += "docker kill " + appId + " &";
         // cmd += "docker kill " + appId;
         qDebug() << cmd;
-        system(cmd.toUtf8());
+        result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning
     }
 }
 
@@ -414,7 +423,8 @@ Q_INVOKABLE void VappsAsync::removeServices(const int index)
     QString appId = installedVappsList[index].id;
     cmd = "docker kill " + appId + ";docker rm " + appId;
     qDebug() << cmd;
-    system(cmd.toUtf8());
+    int result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning
 }
 
 void VappsAsync::handleResults(QString appId, bool isStarted, QString msg)
@@ -442,7 +452,8 @@ void VappsAsync::checkRunningAppSts()
 {    
     QString appStsLog = DK_INSTALLED_APPS_FOLDER + "checkRunningServicesSts.log";
     QString cmd = "> " + appStsLog + "; docker ps > " + appStsLog;
-    system(cmd.toUtf8());
+    int result = system(cmd.toUtf8());
+(void)result; // Suppress unused variable warning
     
     QFile logFile(appStsLog);
     if (!logFile.open(QIODevice::ReadOnly | QIODevice::Text)) {

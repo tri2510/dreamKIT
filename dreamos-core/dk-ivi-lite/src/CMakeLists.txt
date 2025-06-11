@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_CXX_FLAGS "-fpermissive")
 
-find_package(Qt6 6.2 REQUIRED COMPONENTS Quick)
+find_package(Qt6 6.2 REQUIRED COMPONENTS Quick Network)
 
 
 qt_add_executable(dk_ivi
@@ -22,6 +22,10 @@ qt_add_executable(dk_ivi
     installedservices/unsafeparamcheck.cpp
     installedvapps/installedvapps.cpp
     library/vapiclient/vapiclient.cpp
+    protocolbridge/protocolbridge.cpp
+    protocolbridge/protocolbridgemanager.cpp
+    protocolbridge/kuksaconnectionmanager.cpp
+    protocolbridge/terminalconsole.cpp
 )
 
 qt_add_qml_module(dk_ivi
@@ -37,6 +41,14 @@ qt_add_qml_module(dk_ivi
         marketplace/marketplace.qml
         installedservices/installedservices.qml
         installedvapps/installedvapps.qml
+        protocolbridge/protocolbridge.qml
+        protocolbridge/ProtocolBridgeDashboard.qml
+        protocolbridge/ProtocolSourcePanel.qml
+        protocolbridge/ProtocolInterfaceCard.qml
+        protocolbridge/VSSTranslationHub.qml
+        protocolbridge/ProtocolTargetPanel.qml
+        protocolbridge/TerminalConsolePanel.qml
+        protocolbridge/KuksaConfigurationDialog.qml
         resource/customwidgets/CustomBtn1.qml
         resource/customwidgets/CustomBtn2.qml
         resource/customwidgets/IconBtn1.qml
@@ -112,7 +124,7 @@ set_target_properties(KuksaClient PROPERTIES
 )
 
 target_link_libraries(dk_ivi
-    PRIVATE Qt6::Quick KuksaClient
+    PRIVATE Qt6::Quick Qt6::Network KuksaClient
 )
 
 install(TARGETS dk_ivi
