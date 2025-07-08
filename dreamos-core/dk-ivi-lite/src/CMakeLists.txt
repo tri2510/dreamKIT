@@ -15,6 +15,7 @@ qt_add_executable(dk_ivi
     main/config.cpp
     main/dkmanager_subprocess.cpp
     controls/controls.cpp
+    uss/uss.cpp
     digitalauto/digitalauto.cpp
     marketplace/marketplace.cpp
     marketplace/fetching.cpp
@@ -37,6 +38,7 @@ qt_add_qml_module(dk_ivi
         controls/controls.qml
         controls/ModeControl.qml
         controls/ToggleButton.qml
+        uss/uss.qml
         digitalauto/digitalauto.qml
         marketplace/marketplace.qml
         installedservices/installedservices.qml

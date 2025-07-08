@@ -12,6 +12,7 @@
 #include "../installedservices/installedservices.hpp"
 #include "../installedvapps/installedvapps.hpp"
 #include "../controls/controls.hpp"
+#include "../uss/uss.hpp"
 #include "../library/vapiclient/vapiclient.hpp"
 #include "../protocolbridge/protocolbridge.h"
 
@@ -87,6 +88,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<ServicesAsync>("ServicesAsync", 1, 0, "ServicesAsync");
     qmlRegisterType<VappsAsync>("VappsAsync", 1, 0, "VappsAsync");
     qmlRegisterType<ControlsAsync>("ControlsAsync", 1, 0, "ControlsAsync");
+    qmlRegisterType<UssAsync>("UssAsync", 1, 0, "UssAsync");
     
     // Register Protocol Bridge QML types
     ProtocolBridge::registerQMLTypes();

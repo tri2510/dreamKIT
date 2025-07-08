@@ -62,6 +62,22 @@ namespace VehicleAPI {
 
     inline constexpr const char* V_PT_Trans_SelectedGear                 = "Vehicle.Powertrain.Transmission.SelectedGear";
 
+    // USS (Ultrasonic Sensor System) - Front Array (S1-S6)
+    inline constexpr const char* V_ADAS_ObstacleDetectionFront_Left_Distance        = "Vehicle.ADAS.ObstacleDetectionFront.Left.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionFront_CornerLeft_Distance  = "Vehicle.ADAS.ObstacleDetectionFront.CornerLeft.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionFront_Center_Distance      = "Vehicle.ADAS.ObstacleDetectionFront.Center.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionFront_CenterRight_Distance = "Vehicle.ADAS.ObstacleDetectionFront.CenterRight.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionFront_CornerRight_Distance = "Vehicle.ADAS.ObstacleDetectionFront.CornerRight.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionFront_Right_Distance       = "Vehicle.ADAS.ObstacleDetectionFront.Right.Distance";
+    
+    // USS (Ultrasonic Sensor System) - Rear Array (S7-S12)
+    inline constexpr const char* V_ADAS_ObstacleDetectionRear_Right_Distance        = "Vehicle.ADAS.ObstacleDetectionRear.Right.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionRear_CornerRight_Distance  = "Vehicle.ADAS.ObstacleDetectionRear.CornerRight.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionRear_CenterRight_Distance  = "Vehicle.ADAS.ObstacleDetectionRear.CenterRight.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionRear_Center_Distance       = "Vehicle.ADAS.ObstacleDetectionRear.Center.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionRear_CornerLeft_Distance   = "Vehicle.ADAS.ObstacleDetectionRear.CornerLeft.Distance";
+    inline constexpr const char* V_ADAS_ObstacleDetectionRear_Left_Distance         = "Vehicle.ADAS.ObstacleDetectionRear.Left.Distance";
+
     // Enum for Vehicle.SwUpdate.Status
     enum SwUpdateStatus {
         V_U_Status_Idle = 0,
