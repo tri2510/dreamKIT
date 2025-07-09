@@ -29,24 +29,35 @@ UssAsync::UssAsync() : m_parkingModeActive(false), m_scenarioRunning(false)
     std::vector<std::string> signalPaths;
     for (const auto& sensor : m_sensors) {
         signalPaths.push_back(sensor.vssPath);
+        qDebug() << "USS: Subscribing to path:" << QString::fromStdString(sensor.vssPath);
     }
+    
+    qDebug() << "USS: Total paths to subscribe:" << signalPaths.size();
     
     VAPI_CLIENT.subscribeTarget(DK_VAPI_DATABROKER, signalPaths,
         [this](const std::string &updatePath, const std::string &updateValue) {
+            qDebug() << "USS: Lambda callback triggered - Path:" << QString::fromStdString(updatePath) 
+                     << "Value:" << QString::fromStdString(updateValue);
             this->vssSubscribeCallback(updatePath, updateValue);
         }
     );
+    
+    qDebug() << "USS: Subscription setup completed";
 }
 
 void UssAsync::init()
 {
     QThread::msleep(300);
     
-    // Initialize sensor values from VSS
+    qDebug() << "USS: init() called - reading initial values";
+    
+    // Initialize sensor values from VSS - use getCurrentValue for sensors
     std::string val = "";
     
     for (int i = 0; i < 12; ++i) {
-        VAPI_CLIENT.getTargetValue(DK_VAPI_DATABROKER, m_sensors[i].vssPath, val);
+        VAPI_CLIENT.getCurrentValue(DK_VAPI_DATABROKER, m_sensors[i].vssPath, val);
+        qDebug() << "USS: Reading sensor" << i << "path:" << QString::fromStdString(m_sensors[i].vssPath) 
+                 << "value:" << QString::fromStdString(val);
         try {
             float distance = std::stof(val);
             m_sensors[i].currentDistance = distance;
@@ -66,6 +77,7 @@ void UssAsync::init()
                 case 10: emit updateSensor_rear_cornerLeft(distance); break;
                 case 11: emit updateSensor_rear_left(distance); break;
             }
+            qDebug() << "USS: Emitted signal for sensor" << i << "with distance" << distance;
         } catch (const std::exception& e) {
             qDebug() << "Error converting USS sensor value for" << QString::fromStdString(m_sensors[i].vssPath) 
                      << ":" << QString::fromStdString(val);
@@ -73,6 +85,45 @@ void UssAsync::init()
     }
     
     updateClosestDistance();
+    qDebug() << "USS: init() completed";
+    
+    // Temporary polling timer as workaround for subscription issue
+    QTimer* pollTimer = new QTimer(this);
+    connect(pollTimer, &QTimer::timeout, [this]() {
+        std::string val = "";
+        // Poll all sensors
+        for (int i = 0; i < 12; ++i) {
+            VAPI_CLIENT.getCurrentValue(DK_VAPI_DATABROKER, m_sensors[i].vssPath, val);
+            try {
+                float distance = std::stof(val);
+                if (std::abs(distance - m_sensors[i].currentDistance) > 0.01f) { // Only update if changed
+                    qDebug() << "USS: Polling detected change for sensor" << i << ":" << m_sensors[i].currentDistance << "->" << distance;
+                    m_sensors[i].currentDistance = distance;
+                    
+                    // Emit appropriate signal based on sensor index
+                    switch(i) {
+                        case 0: emit updateSensor_front_left(distance); break;
+                        case 1: emit updateSensor_front_cornerLeft(distance); break;
+                        case 2: emit updateSensor_front_center(distance); break;
+                        case 3: emit updateSensor_front_centerRight(distance); break;
+                        case 4: emit updateSensor_front_cornerRight(distance); break;
+                        case 5: emit updateSensor_front_right(distance); break;
+                        case 6: emit updateSensor_rear_right(distance); break;
+                        case 7: emit updateSensor_rear_cornerRight(distance); break;
+                        case 8: emit updateSensor_rear_centerRight(distance); break;
+                        case 9: emit updateSensor_rear_center(distance); break;
+                        case 10: emit updateSensor_rear_cornerLeft(distance); break;
+                        case 11: emit updateSensor_rear_left(distance); break;
+                    }
+                }
+            } catch (const std::exception& e) {
+                // Ignore conversion errors in polling
+            }
+        }
+        updateClosestDistance();
+    });
+    pollTimer->start(500); // Poll every 500ms
+    qDebug() << "USS: Started polling timer as workaround for all sensors";
 }
 
 void UssAsync::vssSubscribeCallback(const std::string &updatePath, const std::string &updateValue)
@@ -148,9 +199,8 @@ void UssAsync::qml_setTestDistance(const QString& sensorId, float distance)
     // Clamp distance to valid range
     distance = std::max(0.0f, std::min(10.0f, distance));
     
-    // Update VSS
+    // Update VSS - USS sensors are sensors (not actuators), so only set current value
     VAPI_CLIENT.setCurrentValue(DK_VAPI_DATABROKER, m_sensors[index].vssPath, distance);
-    VAPI_CLIENT.setTargetValue(DK_VAPI_DATABROKER, m_sensors[index].vssPath, distance);
 }
 
 void UssAsync::qml_setAllTestDistances(float distance)
@@ -161,8 +211,8 @@ void UssAsync::qml_setAllTestDistances(float distance)
     distance = std::max(0.0f, std::min(10.0f, distance));
     
     for (const auto& sensor : m_sensors) {
+        // USS sensors are sensors (not actuators), so only set current value
         VAPI_CLIENT.setCurrentValue(DK_VAPI_DATABROKER, sensor.vssPath, distance);
-        VAPI_CLIENT.setTargetValue(DK_VAPI_DATABROKER, sensor.vssPath, distance);
     }
 }
 

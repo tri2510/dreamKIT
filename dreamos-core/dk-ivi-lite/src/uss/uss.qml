@@ -65,18 +65,102 @@ Rectangle {
     UssAsync {
         id: ussAsync
         
-        onUpdateSensor_front_left: (distance) => { if (!guiTestMode) sensorDistances[0] = distance }
-        onUpdateSensor_front_cornerLeft: (distance) => { if (!guiTestMode) sensorDistances[1] = distance }
-        onUpdateSensor_front_center: (distance) => { if (!guiTestMode) sensorDistances[2] = distance }
-        onUpdateSensor_front_centerRight: (distance) => { if (!guiTestMode) sensorDistances[3] = distance }
-        onUpdateSensor_front_cornerRight: (distance) => { if (!guiTestMode) sensorDistances[4] = distance }
-        onUpdateSensor_front_right: (distance) => { if (!guiTestMode) sensorDistances[5] = distance }
-        onUpdateSensor_rear_right: (distance) => { if (!guiTestMode) sensorDistances[6] = distance }
-        onUpdateSensor_rear_cornerRight: (distance) => { if (!guiTestMode) sensorDistances[7] = distance }
-        onUpdateSensor_rear_centerRight: (distance) => { if (!guiTestMode) sensorDistances[8] = distance }
-        onUpdateSensor_rear_center: (distance) => { if (!guiTestMode) sensorDistances[9] = distance }
-        onUpdateSensor_rear_cornerLeft: (distance) => { if (!guiTestMode) sensorDistances[10] = distance }
-        onUpdateSensor_rear_left: (distance) => { if (!guiTestMode) sensorDistances[11] = distance }
+        onUpdateSensor_front_left: (distance) => { 
+            console.log("USS: Received front_left signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[0] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_front_cornerLeft: (distance) => { 
+            console.log("USS: Received front_cornerLeft signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[1] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_front_center: (distance) => { 
+            console.log("USS: Received front_center signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[2] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_front_centerRight: (distance) => { 
+            console.log("USS: Received front_centerRight signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[3] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_front_cornerRight: (distance) => { 
+            console.log("USS: Received front_cornerRight signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[4] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_front_right: (distance) => { 
+            console.log("USS: Received front_right signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[5] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_rear_right: (distance) => { 
+            console.log("USS: Received rear_right signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[6] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_rear_cornerRight: (distance) => { 
+            console.log("USS: Received rear_cornerRight signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[7] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_rear_centerRight: (distance) => { 
+            console.log("USS: Received rear_centerRight signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[8] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_rear_center: (distance) => { 
+            console.log("USS: Received rear_center signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[9] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_rear_cornerLeft: (distance) => { 
+            console.log("USS: Received rear_cornerLeft signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[10] = distance
+                sensorDistances = newDistances
+            }
+        }
+        onUpdateSensor_rear_left: (distance) => { 
+            console.log("USS: Received rear_left signal:", distance, "guiTestMode:", guiTestMode)
+            if (!guiTestMode) {
+                var newDistances = sensorDistances.slice()
+                newDistances[11] = distance
+                sensorDistances = newDistances
+            }
+        }
         
         onUpdateClosestObstacle: (location, distance) => {
             if (!guiTestMode) {
