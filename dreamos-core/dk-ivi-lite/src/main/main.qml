@@ -161,4 +161,50 @@ ApplicationWindow {
             }
         }
     }
+
+    // Copyright notice - always visible in bottom right
+    Rectangle {
+        id: copyrightPanel
+        width: 350
+        height: 50
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.bottomMargin: 20
+        anchors.rightMargin: 20
+        color: "#2A2A2A"
+        radius: 12
+        border.color: "#00D4AA"
+        border.width: 2
+        opacity: 1.0
+
+        // Background glow effect
+        Rectangle {
+            anchors.centerIn: parent
+            width: parent.width + 8
+            height: parent.height + 8
+            radius: parent.radius + 4
+            color: "transparent"
+            border.color: "#00D4AA"
+            border.width: 1
+            opacity: 0.3
+        }
+
+        Text {
+            anchors.centerIn: parent
+            text: "© 2025 - MS/ETA - BGSV"
+            font.family: "Segoe UI"
+            font.pixelSize: 16
+            font.weight: Font.Bold
+            color: "#FFFFFF"
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+
+        // Enhanced pulsing animation for better visibility
+        SequentialAnimation on border.color {
+            loops: Animation.Infinite
+            ColorAnimation { to: "#00D4AA"; duration: 2000; easing.type: Easing.InOutSine }
+            ColorAnimation { to: "#00A088"; duration: 2000; easing.type: Easing.InOutSine }
+        }
+    }
 }
