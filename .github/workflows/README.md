@@ -120,7 +120,7 @@ docker run -d --name dk_ivi \
 
 1. **Base Images** (when Dockerfiles change):
    ```bash
-   git add dreamos-core/dk-ivi-lite/build/Dockerfile.*
+   git add core/dk-ivi-lite/build/Dockerfile.*
    git commit -m "Update base images"
    git push origin main
    ```

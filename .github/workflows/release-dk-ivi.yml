@@ -38,16 +38,16 @@ jobs:
       # Create the target arch directories if they don't exist
       - name: Prepare library directories
         run: |
-          mkdir -p ./dreamos-core/dk-ivi-lite/src/library/target/amd64
-          mkdir -p ./dreamos-core/dk-ivi-lite/src/library/target/arm64
-          touch ./dreamos-core/dk-ivi-lite/src/library/target/amd64/.placeholder
-          touch ./dreamos-core/dk-ivi-lite/src/library/target/arm64/.placeholder
+          mkdir -p ./core/dk-ivi-lite/src/library/target/amd64
+          mkdir -p ./core/dk-ivi-lite/src/library/target/arm64
+          touch ./core/dk-ivi-lite/src/library/target/amd64/.placeholder
+          touch ./core/dk-ivi-lite/src/library/target/arm64/.placeholder
 
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v5
         with:
-          context: ./dreamos-core/dk-ivi-lite
-          file: ./dreamos-core/dk-ivi-lite/Dockerfile
+          context: ./core/dk-ivi-lite
+          file: ./core/dk-ivi-lite/Dockerfile
           push: ${{ steps.docker_login.outcome == 'success' }}
           tags: |
             ghcr.io/${{ env.OWNER }}/dk_ivi:${{ env.TAG }}

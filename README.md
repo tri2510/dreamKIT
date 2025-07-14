@@ -50,25 +50,43 @@ We've created an example HVAC dreamPack with standard inputs and outputs to help
 
  ![dreamkit wiring](https://bewebstudio.digitalauto.tech/data/projects/fuOFE9EXs7Mv/dreamkit-wiring.png)
 
-# Project Folder Struture
+# Project Folder Structure
 ```
-- dreamos-core                          // the core component to manage the whole system
-  - dk-ivi-lite                         // a simple IVI write by Qt6 C++ to provide an user interface
-  - dm-manager                          // C++ app, core component to orchestrate the whole system: swupdate, sw install,...
-- installation-scripts                  // installtion script, to setup new dreamKIT SW from scratch
-  - jetson-orin                         // installation guide and scripts for jetson ORIN
-  - nxp-s32g                            // installation guide and scripts for NXP S32G
-- qm-apps                               // sample QM app (comsumer), these apps provide value to end user 
-  - BYOD-coffeemachine-app              // an app to trigger coffee machine when you on door in the morning
-  - dreampack-HVAC-app                  // an app to control HVAC dreamPACK
-- services                              // sample service(provider), these services expose vehicle API to external 
-  - BYOD-coffeemachine-service          // this service provide API to control coffee machine
-  - dreampack-HVAC-CAN-provider          // this service provide API to control HVAC dreamPACK(convert CAN signal to vehicle API)
+📱 core/                                // Core platform components
+└── dk-ivi-lite/                       // Main IVI application (Qt6 C++ with embedded services)
+
+🛠️ deployment/                          // All deployment-related files
+├── installation/                       // Installation scripts
+│   ├── jetson-orin/                   // Jetson ORIN platform setup
+│   └── nxp-s32g/                      // NXP S32G platform setup
+├── docker/                            // Docker compositions (future use)
+└── scripts/                           // Deployment scripts (future use)
+
+🧩 examples/                            // Example applications and services
+├── apps/                              // Sample QM applications (consumer apps)
+│   ├── BYOD-coffeemachine-app/        // Coffee machine trigger app
+│   └── dreampack-HVAC-app/            // HVAC control app
+└── services/                          // Sample services (providers)
+    ├── BYOD-coffeemachine-service/    // Coffee machine API service
+    └── dreampack-HVAC-CAN-provider/   // HVAC CAN to API bridge
+
+📚 docs/                               // All documentation
+├── architecture/                      // System architecture and diagrams
+└── development/                       // Development guides and usage docs
+
+🔧 tools/                              // Development and utility tools
+├── scripts/                           // Utility scripts (future use)
+└── templates/                         // Project templates (future use)
+
+🧪 tests/                              // Test suites (future use)
+├── integration/                       // Integration tests
+└── e2e/                              // End-to-end tests
 ```
 
 ## Approach
-1. **First Time Setup**: If your DreamKit hardware doesn't have DreamOS installed, follow the instructions in /installation-scripts.
-2. **Explore Examples**: Experiment with the sample services and apps located in /services and /apps.
+1. **First Time Setup**: If your DreamKit hardware doesn't have DreamOS installed, follow the instructions in `/deployment/installation/`.
+2. **Explore Examples**: Experiment with the sample services and apps located in `/examples/services/` and `/examples/apps/`.
+3. **Core Development**: The main IVI application is located in `/core/dk-ivi-lite/` with enhanced embedded architecture.
 3. **Create a Service**: Build your own service to expose APIs for your hardware/features.
 4. **Build a QM App**: Use your new APIs, along with existing ones, to create a cross-platform QM application.
 5. **Connect and Extend**: Integrate your app with cloud services or UI apps to complete your feature
