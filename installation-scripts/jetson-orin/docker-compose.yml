@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
     hostname: sdv-runtime
     ports:
-      - "55556:55555"
+      - "55555:55555"
     networks:
       - dreamkit-network
     volumes:
@@ -80,11 +80,7 @@ services:
     container_name: dreamkit-dk-ivi
     restart: unless-stopped
     hostname: dk-ivi
-    ports:
-      - "8080:8080"   # Web interface
-      - "5900:5900"   # VNC (if needed)
-    networks:
-      - dreamkit-network
+    network_mode: host
     volumes:
       - ${HOME}/.dk:/app/.dk
       - /tmp/.X11-unix:/tmp/.X11-unix
@@ -95,6 +91,11 @@ services:
       - ARCH=${ARCH:-x86_64}
       - DISPLAY=${DISPLAY:-:0}
       - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp}
+      - KUKSA_DATA_BROKER_ADDR=sdv-runtime:55555
+      - VAPI_HOST=sdv-runtime
+      - VAPI_PORT=55555
+      - KUKSA_HOST=sdv-runtime
+      - KUKSA_PORT=55555
     privileged: true
     depends_on:
       dk-manager:
