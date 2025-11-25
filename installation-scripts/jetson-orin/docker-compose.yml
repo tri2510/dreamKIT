@@ -36,14 +36,14 @@ services:
     networks:
       - dreamkit-network
     volumes:
-      - ${HOME}/.dk/sdv-runtime:/home/dev/ws
+      - ${HOME}/.dk/sdv-runtime/vss.json:/home/dev/ws/vss.json:ro
     environment:
       - USER=${DK_USER:-dreamkit}
       - RUNTIME_NAME=${RUNTIME_NAME:-dreamkit-runtime}
       - ARCH=${ARCH:-x86_64}
       - OFFLINE_MODE=true
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "55555"]
+      test: ["CMD", "python3", "-c", "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 55555)); s.close()"]
       interval: 30s
       timeout: 10s
       retries: 5
