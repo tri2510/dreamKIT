@@ -42,6 +42,8 @@ parse_arguments() {
     dk_ivi_value="true"        # Changed default to true
     zecu_value="true"          # Default enable zonal ECU setup
     swupdate_value="false"     # Default disable software update only mode
+    skip_deps_value="false"    # Skip dependency installation
+    skip_x11_value="false"     # Skip X11 forwarding setup
     
     # Parse all arguments
     for arg in "$@"; do
@@ -54,6 +56,12 @@ parse_arguments() {
                 ;;
             swupdate=*)
                 swupdate_value="${arg#*=}"
+                ;;
+            skip_deps=*)
+                skip_deps_value="${arg#*=}"
+                ;;
+            skip_x11=*)
+                skip_x11_value="${arg#*=}"
                 ;;
         esac
     done
@@ -77,14 +85,30 @@ parse_arguments() {
     
     case "$swupdate_value" in
         true|false) ;;
-        *) 
+        *)
             show_error "Invalid swupdate value: $swupdate_value (must be true or false)"
             exit 1
             ;;
     esac
-    
+
+    case "$skip_deps_value" in
+        true|false) ;;
+        *)
+            show_error "Invalid skip_deps value: $skip_deps_value (must be true or false)"
+            exit 1
+            ;;
+    esac
+
+    case "$skip_x11_value" in
+        true|false) ;;
+        *)
+            show_error "Invalid skip_x11 value: $skip_x11_value (must be true or false)"
+            exit 1
+            ;;
+    esac
+
     # Export for use in other functions
-    export dk_ivi_value zecu_value swupdate_value
+    export dk_ivi_value zecu_value swupdate_value skip_deps_value skip_x11_value
 }
 
 # Update show_usage function to include possible parameter
@@ -96,12 +120,17 @@ show_usage() {
     echo -e "${CYAN}  zecu=${BOLD}true|false${NC}           ${DIM}Setup zonal ECU (S32G) (default: true)${NC}"
     echo -e "${CYAN}  swupdate=${BOLD}true|false${NC}       ${DIM}Software update only mode (default: false)${NC}"
     echo -e "${CYAN}  dk_ivi=${BOLD}true|false${NC}         ${DIM}Install IVI interface (default: true)${NC}"
+    echo -e "${CYAN}  skip_deps=${BOLD}true|false${NC}      ${DIM}Skip dependency installation (default: false)${NC}"
+    echo -e "${CYAN}  skip_x11=${BOLD}true|false${NC}       ${DIM}Skip X11 forwarding setup (default: false)${NC}"
     echo
 
     echo -e "${WHITE}${BOLD}Frequently Usage:${NC}"
     echo -e "${WHITE}  sudo ./dk_install.sh                                    ${DIM}# Full installation with IVI enabled, zonal ECU setup${NC}"
     echo -e "${WHITE}  sudo ./dk_install.sh zecu=false                         ${DIM}# Skip zonal ECU (S32G) setup${NC}"
     echo -e "${WHITE}  sudo ./dk_install.sh zecu=false swupdate=true           ${DIM}# Software update only mode${NC}"
+    echo -e "${WHITE}  sudo ./dk_install.sh skip_deps=true                     ${DIM}# Skip dependency installation${NC}"
+    echo -e "${WHITE}  sudo ./dk_install.sh skip_x11=true                      ${DIM}# Skip X11 forwarding setup${NC}"
+    echo -e "${WHITE}  sudo ./dk_install.sh skip_deps=true skip_x11=true        ${DIM}# Minimal sudo prompts (skip device setup)${NC}"
     echo
     
     echo -e "${WHITE}${BOLD}Software Update Mode:${NC}"
@@ -855,6 +884,14 @@ main() {
         echo -e "${GREEN} ${CHECKMARK} IVI Interface: ${BOLD}$dk_ivi_value${NC}"
         echo -e "${GREEN} ${CHECKMARK} Zonal ECU Setup: ${BOLD}$zecu_value${NC}"
         echo -e "${GREEN} ${CHECKMARK} Software Update Only: ${BOLD}$swupdate_value${NC}"
+
+        # Show skip options if enabled
+        if [[ "$skip_deps_value" == "true" ]]; then
+            echo -e "${YELLOW} ${WARNING} Skip Dependencies: ${BOLD}$skip_deps_value${NC}"
+        fi
+        if [[ "$skip_x11_value" == "true" ]]; then
+            echo -e "${YELLOW} ${WARNING} Skip X11 Setup: ${BOLD}$skip_x11_value${NC}"
+        fi
         echo
     fi
     
@@ -912,25 +949,36 @@ main() {
     run_with_feedback "docker network create dk_network 2>/dev/null || true" "Docker network 'dk_network' ready" "Network setup encountered issues"
     
     # Step 6: Dependencies Installation
-    show_step 6 "Dependencies" "Installing required system utilities and tools"
+    if [[ "$skip_deps_value" == "false" ]]; then
+        show_step 6 "Dependencies" "Installing required system utilities and tools"
 
-    # Make the script executable first
-    chmod +x "$CURRENT_DIR/scripts/install_dependencies.sh"
+        # Make the script executable first
+        chmod +x "$CURRENT_DIR/scripts/install_dependencies.sh"
 
-    run_with_feedback \
-        "sudo $CURRENT_DIR/scripts/install_dependencies.sh" \
-        "Dependencies installation completed" \
-        "Dependencies installation failed"
+        run_with_feedback \
+            "sudo $CURRENT_DIR/scripts/install_dependencies.sh" \
+            "Dependencies installation completed" \
+            "Dependencies installation failed"
 
-    if [ $? -ne 0 ]; then
-        show_error "Dependencies installation failed. Please check the logs."
-        exit 1
+        if [ $? -ne 0 ]; then
+            show_error "Dependencies installation failed. Please check the logs."
+            exit 1
+        fi
+    else
+        show_step 6 "Dependencies" "Skipping dependency installation (skip_deps=true)"
+        show_info "Skipping system utilities installation - ensure you have required tools installed"
     fi
 
-    # Setup X11 forwarding
-    run_with_feedback "sudo $CURRENT_DIR/scripts/dk_enable_xhost.sh" \
-                        "X11 forwarding enabled" "X11 setup failed" false true
-    run_with_feedback "xhost +local:docker" "Docker X11 access granted" "X11 access failed"
+    # Setup X11 forwarding (optional, device-specific)
+    if [[ "$skip_x11_value" == "false" ]]; then
+        show_info "Setting up X11 forwarding for GUI applications..."
+        run_with_feedback "sudo $CURRENT_DIR/scripts/dk_enable_xhost.sh" \
+                            "X11 forwarding enabled" "X11 setup failed" false true
+        run_with_feedback "xhost +local:docker" "Docker X11 access granted" "X11 access failed"
+    else
+        show_info "Skipping X11 forwarding setup (skip_x11=true)"
+        show_info "GUI applications may not display properly - manual setup may be required"
+    fi
 
     # Step 7: Optimized Image Pre-pulling (minimize sudo prompts)
     if [[ "$swupdate_value" == "false" ]]; then
