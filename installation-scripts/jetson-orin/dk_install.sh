@@ -351,6 +351,34 @@ docker_pull_with_info() {
     return 1
 }
 
+# Function to pull all required images at once to minimize sudo prompts
+pull_all_images_batch() {
+    show_info "Pre-pulling all required Docker images (single authentication)..."
+
+    # Define all required images
+    local images=(
+        "${DOCKER_HUB_NAMESPACE}/sdv-runtime:latest"
+        "eclipse-mosquitto:2.0.14"
+        "${DOCKER_HUB_NAMESPACE}/dk_manager:latest"
+        "${DOCKER_HUB_NAMESPACE}/dk_ivi:latest"
+    )
+
+    # Pull all images in one command to minimize authentication
+    local pull_commands=""
+    for image in "${images[@]}"; do
+        pull_commands+="docker pull '$image' || echo 'Failed to pull: $image'; "
+    done
+
+    # Execute all pulls with a single sudo command
+    if eval "sudo bash -c '$pull_commands'"; then
+        show_success "All Docker images pre-pulled successfully"
+        return 0
+    else
+        show_warning "Some images failed to pre-pull (will retry during deployment)"
+        return 1
+    fi
+}
+
 # Function to show K3s cluster information
 show_k3s_cluster_info() {
     # Quick cluster check
@@ -441,10 +469,11 @@ apply_manifest() {
     # -----------------------------------------------------------------
     MANIFEST_DIR="${CURRENT_DIR}/manifests"
     local yaml="$1"
-    local tmp_dir="tmp/dk_manifests"
+    # Create user-owned temporary directory to avoid sudo permission issues
+    local tmp_dir="/tmp/dreamkit-install-$$/dk_manifests"
     local parsed_yaml="${tmp_dir}/parsed_${yaml}"
-    
-    # Create tmp directory for parsed manifests
+
+    # Create tmp directory for parsed manifests with user ownership
     mkdir -p "$tmp_dir"
     
     local VARS='${DOCKER_HUB_NAMESPACE} ${ARCH} ${DK_USER} ${RUNTIME_NAME} \
@@ -859,7 +888,13 @@ main() {
     run_with_feedback "sudo $CURRENT_DIR/scripts/dk_enable_xhost.sh" \
                         "X11 forwarding enabled" "X11 setup failed" false true
     run_with_feedback "xhost +local:docker" "Docker X11 access granted" "X11 access failed"
-    
+
+    # Step 6.5: Optimized Image Pre-pulling (minimize sudo prompts)
+    if [[ "$swupdate_value" == "false" ]]; then
+        show_step 6.5 "Docker Images" "Pre-pulling all required Docker images"
+        pull_all_images_batch
+    fi
+
     ###############################################################################
     # Step 7   local Docker registry
     ###############################################################################
@@ -986,6 +1021,17 @@ EOF
     fi
     
     echo -e "\n${GREEN}Thank you for choosing dreamOS!${NC}"
+
+    # Cleanup temporary files
+    cleanup_temp_files
+}
+
+# Function to cleanup temporary files
+cleanup_temp_files() {
+    # Clean up any temporary directories we created
+    if [[ -n "$TMP_DIR" && -d "/tmp/dreamkit-install-"* ]]; then
+        rm -rf /tmp/dreamkit-install-*/ 2>/dev/null || true
+    fi
 }
 
 # Run main function
