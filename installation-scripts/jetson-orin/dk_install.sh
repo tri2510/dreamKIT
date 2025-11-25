@@ -33,7 +33,7 @@ SPINNER_FRAMES=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
 PROGRESS_CHARS=("▱" "▰")
 
 # Global variables for progress tracking
-TOTAL_STEPS=13
+TOTAL_STEPS=14
 CURRENT_STEP=0
 
 # Parse command line arguments early
@@ -105,12 +105,12 @@ show_usage() {
     echo
     
     echo -e "${WHITE}${BOLD}Software Update Mode:${NC}"
-    echo -e "${CYAN}  When swupdate=true, only steps 10-14 are executed:${NC}"
-    echo -e "${DIM}  - Step 10: SDV Runtime update${NC}"
-    echo -e "${DIM}  - Step 11: MQTT Broker update${NC}"
-    echo -e "${DIM}  - Step 12: DreamKit Manager update${NC}"
-    echo -e "${DIM}  - Step 13: IVI Interface update (if dk_ivi=true)${NC}"
-    echo -e "${DIM}  - Step 14: K3s Cluster Information${NC}"
+    echo -e "${CYAN}  When swupdate=true, only steps 11-15 are executed:${NC}"
+    echo -e "${DIM}  - Step 11: SDV Runtime update${NC}"
+    echo -e "${DIM}  - Step 12: MQTT Broker update${NC}"
+    echo -e "${DIM}  - Step 13: DreamKit Manager update${NC}"
+    echo -e "${DIM}  - Step 14: IVI Interface update (if dk_ivi=true)${NC}"
+    echo -e "${DIM}  - Step 15: K3s Cluster Information${NC}"
     echo
     echo -e "${CYAN}${BOLD}════════════════════════════════════════════════════════════════════════\n"
 }
@@ -799,9 +799,9 @@ main() {
         echo -e "\n${YELLOW}${BOLD}${ROCKET} Ready to update your dreamOS environment? ${ROCKET}${NC}\n"
 
         # Adjust total steps for software update mode
-        TOTAL_STEPS=5  # SDV Runtime + DreamKit Manager + IVI (optional) + MQTT Broker + K3s Info
+        TOTAL_STEPS=6  # SDV Runtime + DreamKit Manager + IVI (optional) + MQTT Broker + K3s Info
         if [[ "$dk_ivi_value" == "false" ]]; then
-            TOTAL_STEPS=4  # Without IVI: SDV Runtime + DreamKit Manager + MQTT Broker + K3s Info
+            TOTAL_STEPS=5  # Without IVI: SDV Runtime + DreamKit Manager + MQTT Broker + K3s Info
         fi
     else
         type_text "This installer will set up your complete dreamOS environment with all required components." 0.01
@@ -889,16 +889,16 @@ main() {
                         "X11 forwarding enabled" "X11 setup failed" false true
     run_with_feedback "xhost +local:docker" "Docker X11 access granted" "X11 access failed"
 
-    # Step 6.5: Optimized Image Pre-pulling (minimize sudo prompts)
+    # Step 7: Optimized Image Pre-pulling (minimize sudo prompts)
     if [[ "$swupdate_value" == "false" ]]; then
-        show_step 6.5 "Docker Images" "Pre-pulling all required Docker images"
+        show_step 7 "Docker Images" "Pre-pulling all required Docker images"
         pull_all_images_batch
     fi
 
     ###############################################################################
-    # Step 7   local Docker registry
+    # Step 8   local Docker registry
     ###############################################################################
-    show_step 7 "Docker local registry" "VIP installation"
+    show_step 8 "Docker local registry" "VIP installation"
     show_info "Setup local registry..."
     run_with_feedback \
         "sudo $CURRENT_DIR/scripts/setup_local_docker_registry.sh" \
@@ -908,9 +908,9 @@ main() {
         "Docker local setup failed"
 
     ###############################################################################
-    # Step 8   K3s-based installation
+    # Step 9   K3s-based installation
     ###############################################################################
-    show_step 8 "K3s-based installation" "k3s master installation & preparation for local registry"
+    show_step 9 "K3s-based installation" "k3s master installation & preparation for local registry"
     sudo DK_USER="$DK_USER" scripts/k3s-master-prepare.sh eth0
     if [ $? -ne 0 ]; then
         show_error "Failed to prepare K3s master. Please check the logs."
@@ -919,10 +919,10 @@ main() {
     show_success "K3s master prepared successfully"
     
     ###############################################################################
-    # Step-9   NXP-S32G setup (k3s-agent & friends) - conditional based on zecu parameter
+    # Step-10   NXP-S32G setup (k3s-agent & friends) - conditional based on zecu parameter
     ###############################################################################
     if [[ "$zecu_value" == "true" ]]; then
-        show_step 9 "NXP-S32G setup" "k3s-agent installation & relevant stuff"
+        show_step 10 "NXP-S32G setup" "k3s-agent installation & relevant stuff"
 
         TARGET_IP="192.168.56.49"
         PING_COUNT=3      # how many echo-requests we send
@@ -954,9 +954,9 @@ main() {
     fi
     
     ###############################################################################
-    # Steps 10-12: Software Components - call the new function
+    # Steps 11-13: Software Components - call the new function
     ###############################################################################
-    perform_software_updates 0 "install"  # No offset, run as steps 10-12
+    perform_software_updates 1 "install"  # Offset of 1, run as steps 11-13
     
     ###############################################################################
     # Final steps
