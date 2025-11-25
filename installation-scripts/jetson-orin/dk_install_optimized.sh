@@ -32,7 +32,7 @@ ROCKET="🚀"
 DREAM="💭"
 
 # Global variables
-CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}") && pwd)"
+CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_NAME="$(basename "$0")"
 
 # Function to show success message
