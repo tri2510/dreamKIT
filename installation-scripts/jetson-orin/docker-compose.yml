@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # MQTT Broker - Mosquitto
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0.14
+    container_name: dreamkit-mqtt-broker
+    restart: unless-stopped
+    hostname: mqtt-broker
+    command: mosquitto -c /mosquitto-no-auth.conf
+    ports:
+      - "1883:1883"   # MQTT
+      - "9001:9001"   # WebSocket
+    networks:
+      - dreamkit-network
+    volumes:
+      - ./mosquitto-config:/mosquitto/config
+      - ./mosquitto-data:/mosquitto/data
+      - ./mosquitto-logs:/mosquitto/log
+    environment:
+      - TZ=UTC
+
+  # SDV Runtime - Software Defined Vehicle Runtime
+  sdv-runtime:
+    image: ghcr.io/eclipse-autowrx/sdv-runtime:latest
+    container_name: dreamkit-sdv-runtime
+    restart: unless-stopped
+    hostname: sdv-runtime
+    ports:
+      - "55555:55555"
+    networks:
+      - dreamkit-network
+    volumes:
+      - ${HOME}/.dk/sdv-runtime:/home/dev/ws/vss.json
+    environment:
+      - USER=${DK_USER:-dreamkit}
+      - RUNTIME_NAME=${RUNTIME_NAME:-dreamkit-runtime}
+      - ARCH=${ARCH:-x86_64}
+      - OFFLINE_MODE=true
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "55555"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+
+  # DreamKit Manager - Core Management Service
+  dk-manager:
+    image: ${DOCKER_HUB_NAMESPACE:-eclipseautowrx}/dk_manager:latest
+    container_name: dreamkit-dk-manager
+    restart: unless-stopped
+    hostname: dk-manager
+    networks:
+      - dreamkit-network
+    privileged: true  # Required for Docker management
+    volumes:
+      - ${HOME}/.dk:/app/.dk
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+    environment:
+      - USER=${DK_USER:-dreamkit}
+      - DOCKER_HUB_NAMESPACE=${DOCKER_HUB_NAMESPACE:-eclipseautowrx}
+      - ARCH=${ARCH:-x86_64}
+      - TZ=UTC
+    depends_on:
+      sdv-runtime:
+        condition: service_healthy
+
+  # IVI Interface - In-Vehicle Infotainment (Conditional)
+  dk-ivi:
+    image: ${DOCKER_HUB_NAMESPACE:-eclipseautowrx}/dk_ivi:latest
+    container_name: dreamkit-dk-ivi
+    restart: unless-stopped
+    hostname: dk-ivi
+    ports:
+      - "8080:8080"   # Web interface
+      - "5900:5900"   # VNC (if needed)
+    networks:
+      - dreamkit-network
+    volumes:
+      - ${HOME}/.dk:/app/.dk
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${XDG_RUNTIME_DIR:-/tmp}/pulse:/run/pulse
+    environment:
+      - USER=${DK_USER:-dreamkit}
+      - DOCKER_HUB_NAMESPACE=${DOCKER_HUB_NAMESPACE:-eclipseautowrx}
+      - ARCH=${ARCH:-x86_64}
+      - DISPLAY=${DISPLAY:-:0}
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp}
+    privileged: true
+    depends_on:
+      dk-manager:
+        condition: service_started
+    profiles:
+      - ivi  # Only start if dk_ivi=true
+
+  # Local Docker Registry (Optional)
+  local-registry:
+    image: registry:2.8
+    container_name: dreamkit-local-registry
+    restart: unless-stopped
+    hostname: local-registry
+    ports:
+      - "5000:5000"
+    networks:
+      - dreamkit-network
+    volumes:
+      - ./registry-data:/var/lib/registry
+    environment:
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - REGISTRY_LOG_LEVEL=info
+    profiles:
+      - registry  # Only start if needed for local development
+
+networks:
+  dreamkit-network:
+    name: dreamkit-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  mosquitto-config:
+    driver: local
+  mosquitto-data:
+    driver: local
+  mosquitto-logs:
+    driver: local
+  registry-data:
+    driver: local

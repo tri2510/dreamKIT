@@ -44,6 +44,7 @@ parse_arguments() {
     swupdate_value="false"     # Default disable software update only mode
     skip_deps_value="false"    # Skip dependency installation
     skip_x11_value="false"     # Skip X11 forwarding setup
+    docker_mode_value="false"  # Use Docker instead of K3s
     
     # Parse all arguments
     for arg in "$@"; do
@@ -62,6 +63,9 @@ parse_arguments() {
                 ;;
             skip_x11=*)
                 skip_x11_value="${arg#*=}"
+                ;;
+            docker_mode=*)
+                docker_mode_value="${arg#*=}"
                 ;;
         esac
     done
@@ -107,8 +111,16 @@ parse_arguments() {
             ;;
     esac
 
+    case "$docker_mode_value" in
+        true|false) ;;
+        *)
+            show_error "Invalid docker_mode value: $docker_mode_value (must be true or false)"
+            exit 1
+            ;;
+    esac
+
     # Export for use in other functions
-    export dk_ivi_value zecu_value swupdate_value skip_deps_value skip_x11_value
+    export dk_ivi_value zecu_value swupdate_value skip_deps_value skip_x11_value docker_mode_value
 }
 
 # Update show_usage function to include possible parameter
@@ -122,6 +134,7 @@ show_usage() {
     echo -e "${CYAN}  dk_ivi=${BOLD}true|false${NC}         ${DIM}Install IVI interface (default: true)${NC}"
     echo -e "${CYAN}  skip_deps=${BOLD}true|false${NC}      ${DIM}Skip dependency installation (default: false)${NC}"
     echo -e "${CYAN}  skip_x11=${BOLD}true|false${NC}       ${DIM}Skip X11 forwarding setup (default: false)${NC}"
+    echo -e "${CYAN}  docker_mode=${BOLD}true|false${NC}    ${DIM}Use Docker instead of K3s (default: false)${NC}"
     echo
 
     echo -e "${WHITE}${BOLD}Frequently Usage:${NC}"
@@ -130,7 +143,9 @@ show_usage() {
     echo -e "${WHITE}  sudo ./dk_install.sh zecu=false swupdate=true           ${DIM}# Software update only mode${NC}"
     echo -e "${WHITE}  sudo ./dk_install.sh skip_deps=true                     ${DIM}# Skip dependency installation${NC}"
     echo -e "${WHITE}  sudo ./dk_install.sh skip_x11=true                      ${DIM}# Skip X11 forwarding setup${NC}"
+    echo -e "${WHITE}  sudo ./dk_install.sh docker_mode=true                  ${DIM}# Use Docker instead of K3s (recommended)${NC}"
     echo -e "${WHITE}  sudo ./dk_install.sh skip_deps=true skip_x11=true        ${DIM}# Minimal sudo prompts (skip device setup)${NC}"
+    echo -e "${WHITE}  sudo ./dk_install.sh docker_mode=true skip_deps=true    ${DIM}# Docker mode with minimal setup${NC}"
     echo
     
     echo -e "${WHITE}${BOLD}Software Update Mode:${NC}"
@@ -892,6 +907,9 @@ main() {
         if [[ "$skip_x11_value" == "true" ]]; then
             echo -e "${YELLOW} ${WARNING} Skip X11 Setup: ${BOLD}$skip_x11_value${NC}"
         fi
+        if [[ "$docker_mode_value" == "true" ]]; then
+            echo -e "${GREEN} ${CHECKMARK} Docker Mode (instead of K3s): ${BOLD}$docker_mode_value${NC}"
+        fi
         echo
     fi
     
@@ -997,6 +1015,48 @@ main() {
         \n ✓ You can now use the local Docker registry for your images.\
         \n ✓ To push images, use: docker push localhost:5000/your-image-name" \
         "Docker local setup failed"
+
+    ###############################################################################
+    # Docker-based deployment (alternative to K3s)
+    ###############################################################################
+    if [[ "$docker_mode_value" == "true" ]]; then
+        show_step 9 "Docker-based deployment" "Deploying dreamKIT services using Docker Compose"
+
+        # Check Docker availability
+        if ! command -v docker &> /dev/null; then
+            show_error "Docker is not installed. Please install Docker first."
+            exit 1
+        fi
+
+        if ! command -v docker-compose &> /dev/null; then
+            show_error "Docker Compose is not installed. Please install docker-compose-plugin."
+            exit 1
+        fi
+
+        # Make Docker deployment script executable
+        chmod +x "$CURRENT_DIR/docker-deploy.sh"
+        chmod +x "$CURRENT_DIR/docker-manage.sh"
+
+        # Deploy using Docker
+        show_info "Deploying dreamKIT services with Docker Compose..."
+        if [[ "$dk_ivi_value" == "true" ]]; then
+            "$CURRENT_DIR/docker-deploy.sh" dk_ivi=true
+        else
+            "$CURRENT_DIR/docker-deploy.sh" dk_ivi=false
+        fi
+
+        if [ $? -ne 0 ]; then
+            show_error "Docker deployment failed. Please check the logs."
+            exit 1
+        fi
+
+        show_success "dreamKIT Docker deployment completed successfully!"
+        show_info "Use '$CURRENT_DIR/docker-manage.sh status' to check service status"
+        show_info "Use '$CURRENT_DIR/docker-manage.sh logs <service>' to view logs"
+
+        # Skip K3s installation since we're using Docker
+        return 0
+    fi
 
     ###############################################################################
     # Step 9   K3s-based installation
