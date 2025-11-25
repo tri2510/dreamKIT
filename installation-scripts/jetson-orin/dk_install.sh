@@ -379,6 +379,51 @@ pull_all_images_batch() {
     fi
 }
 
+# Function to setup kubectl access without repeated sudo prompts
+setup_kubectl_access() {
+    show_info "Setting up kubectl access to minimize sudo prompts..."
+
+    # Setup kubectl access for the current user
+    if [[ -f "/etc/rancher/k3s/k3s.yaml" ]]; then
+        mkdir -p ~/.kube
+        sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+        sudo chown $(id -u):$(id -g) ~/.kube/config
+        export KUBECONFIG=~/.kube/config
+
+        # Test kubectl access without sudo
+        if kubectl cluster-info &>/dev/null; then
+            show_success "kubectl access configured successfully (no sudo required)"
+            return 0
+        else
+            show_warning "kubectl access setup failed, will continue with sudo"
+            return 1
+        fi
+    else
+        show_warning "k3s config not found, will continue with sudo for kubectl"
+        return 1
+    fi
+}
+
+# Function to run kubectl commands with optimized sudo usage
+kubectl_command() {
+    local cmd="$1"
+    local needs_sudo=${2:-true}
+
+    # Try without sudo first
+    if command -v kubectl >/dev/null 2>&1 && kubectl cluster-info &>/dev/null; then
+        if eval "$cmd"; then
+            return 0
+        fi
+    fi
+
+    # Fallback to sudo if needed
+    if [[ "$needs_sudo" == "true" ]]; then
+        eval "sudo $cmd"
+    else
+        eval "$cmd"
+    fi
+}
+
 # Function to show K3s cluster information
 show_k3s_cluster_info() {
     # Quick cluster check
@@ -433,10 +478,11 @@ force_deployment_update() {
     show_info "Forcing update for deployment: $deployment_name"
     
     # Step 1: Delete existing deployment to ensure fresh start
-    run_with_feedback \
-        "sudo kubectl delete deployment/$deployment_name -n $namespace --ignore-not-found --wait=true" \
-        "Existing deployment removed" \
-        "Deployment cleanup completed"
+    if kubectl_command "kubectl delete deployment/$deployment_name -n $namespace --ignore-not-found --wait=true"; then
+        show_success "Existing deployment removed"
+    else
+        show_info "Deployment cleanup completed"
+    fi
     
     # Step 2: Wait for complete cleanup
     show_info "Waiting for cleanup to complete..."
@@ -527,10 +573,11 @@ apply_manifest_with_force_update() {
     apply_manifest "$yaml"
     
     # Step 3: Wait for deployment with extended timeout
-    run_with_feedback \
-        "sudo kubectl rollout status deployment/$deployment_name" \
-        "$deployment_name is READY with latest image" \
-        "$deployment_name failed to start"
+    if kubectl_command "kubectl rollout status deployment/$deployment_name"; then
+        show_success "$deployment_name is READY with latest image"
+    else
+        show_error "$deployment_name failed to start"
+    fi
     
     # Step 4: Verify image version (if provided)
     if [ -n "$image_name" ]; then
@@ -639,38 +686,34 @@ perform_software_updates() {
     # Enhanced wait with timeout and better error handling
     local pull_timeout=600
     show_info "Waiting for SDV Runtime image pull (timeout: ${pull_timeout}s)..."
-    if ! run_with_feedback \
-        "sudo kubectl wait --for=condition=complete job/sdv-runtime-pull --timeout=${pull_timeout}s" \
-        "Latest SDV Runtime image pulled successfully" \
-        "SDV Runtime image pull failed or timed out" \
-        false \
-        true; then
+    if ! kubectl_command "kubectl wait --for=condition=complete job/sdv-runtime-pull --timeout=${pull_timeout}s"; then
+        show_error "SDV Runtime image pull failed or timed out"
         
         # Fallback: Check if job failed and retry once
         show_warning "Initial pull failed, checking job status and retrying..."
-        local job_status=$(kubectl get job sdv-runtime-pull -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null || echo "Unknown")
-        
+        local job_status=$(kubectl_command "kubectl get job sdv-runtime-pull -o jsonpath='{.status.conditions[?(@.type==\"Failed\")].status}'" 2>/dev/null || echo "Unknown")
+
         if [[ "$job_status" == "True" ]]; then
             show_info "Job failed, cleaning up and retrying..."
-            kubectl delete job sdv-runtime-pull --ignore-not-found
+            kubectl_command "kubectl delete job sdv-runtime-pull --ignore-not-found"
             sleep 5
-            
+
             # Retry the pull job
             apply_manifest sdv-runtime-pull.yaml
-            run_with_feedback \
-                "sudo kubectl wait --for=condition=complete job/sdv-runtime-pull --timeout=600s" \
-                "SDV Runtime image pulled on retry" \
-                "SDV Runtime image pull failed after retry" \
-                false \
-                true
+            if kubectl_command "kubectl wait --for=condition=complete job/sdv-runtime-pull --timeout=600s"; then
+                show_success "SDV Runtime image pulled on retry"
+            else
+                show_error "SDV Runtime image pull failed after retry"
+            fi
         fi
     fi
 
     # Clean up pull job
-    run_with_feedback \
-        "sudo kubectl delete job sdv-runtime-pull --ignore-not-found" \
-        "Pull job cleaned up" \
-        "Cleanup completed"
+    if kubectl_command "kubectl delete job sdv-runtime-pull --ignore-not-found"; then
+        show_success "Pull job cleaned up"
+    else
+        show_warning "Cleanup completed with warnings"
+    fi
 
     # Apply with force update
     apply_manifest_with_force_update "sdv-runtime.yaml" "sdv-runtime" "${DOCKER_HUB_NAMESPACE}/sdv-runtime:latest"
@@ -684,18 +727,18 @@ perform_software_updates() {
 
         # Pull latest image first
         apply_manifest mqtt-broker-pull.yaml
-        run_with_feedback \
-            "sudo kubectl wait --for=condition=complete job/mqtt-broker-pull --timeout=600s" \
-            "Latest MQTT broker image pulled" \
-            "MQTT broker image pull failed" \
-            false \
-            true
+        if kubectl_command "kubectl wait --for=condition=complete job/mqtt-broker-pull --timeout=600s"; then
+            show_success "Latest MQTT broker image pulled"
+        else
+            show_error "MQTT broker image pull failed"
+        fi
 
         # Clean up pull job
-        run_with_feedback \
-            "sudo kubectl delete job mqtt-broker-pull --ignore-not-found" \
-            "Pull job cleaned up" \
-            "Cleanup completed"
+        if kubectl_command "kubectl delete job mqtt-broker-pull --ignore-not-found"; then
+            show_success "Pull job cleaned up"
+        else
+            show_warning "Cleanup completed with warnings"
+        fi
 
         # Apply with force update
         apply_manifest_with_force_update "mqtt-broker.yaml" "mqtt-broker" "eclipse-mosquitto:2.0.14"
@@ -713,18 +756,18 @@ perform_software_updates() {
 
     # Pull latest image first
     apply_manifest dk-manager-pull.yaml
-    run_with_feedback \
-        "sudo kubectl wait --for=condition=complete job/dk-manager-pull --timeout=600s" \
-        "Latest DreamKit Manager image pulled" \
-        "DreamKit Manager image pull failed" \
-        false \
-        true
+    if kubectl_command "kubectl wait --for=condition=complete job/dk-manager-pull --timeout=600s"; then
+        show_success "Latest DreamKit Manager image pulled"
+    else
+        show_error "DreamKit Manager image pull failed"
+    fi
 
     # Clean up pull job
-    run_with_feedback \
-        "sudo kubectl delete job dk-manager-pull --ignore-not-found" \
-        "Pull job cleaned up" \
-        "Cleanup completed"
+    if kubectl_command "kubectl delete job dk-manager-pull --ignore-not-found"; then
+        show_success "Pull job cleaned up"
+    else
+        show_warning "Cleanup completed with warnings"
+    fi
 
     # Apply with force update
     apply_manifest_with_force_update "dk-manager.yaml" "dk-manager" "${DOCKER_HUB_NAMESPACE}/dk-manager:latest"
@@ -742,18 +785,18 @@ perform_software_updates() {
 
         # Pull latest image first
         apply_manifest dk-ivi-pull.yaml
-        run_with_feedback \
-            "sudo kubectl wait --for=condition=complete job/dk-ivi-pull --timeout=600s" \
-            "Latest IVI image pulled" \
-            "IVI image pull failed" \
-            false \
-            true
-        
+        if kubectl_command "kubectl wait --for=condition=complete job/dk-ivi-pull --timeout=600s"; then
+            show_success "Latest IVI image pulled"
+        else
+            show_error "IVI image pull failed"
+        fi
+
         # Clean up pull job
-        run_with_feedback \
-            "sudo kubectl delete job dk-ivi-pull --ignore-not-found" \
-            "Pull job cleaned up" \
-            "Cleanup completed"
+        if kubectl_command "kubectl delete job dk-ivi-pull --ignore-not-found"; then
+            show_success "Pull job cleaned up"
+        else
+            show_warning "Cleanup completed with warnings"
+        fi
 
         # Decide which manifest to apply and force update
         if [ -f "/etc/nv_tegra_release" ]; then
@@ -917,7 +960,10 @@ main() {
         exit 1
     fi
     show_success "K3s master prepared successfully"
-    
+
+    # Setup kubectl access to minimize sudo prompts for subsequent operations
+    setup_kubectl_access
+
     ###############################################################################
     # Step-10   NXP-S32G setup (k3s-agent & friends) - conditional based on zecu parameter
     ###############################################################################
