@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: mqtt-broker-pull
+  name: sdv-runtime-pull
 spec:
   # Add backoff limit to prevent infinite retries
   backoffLimit: 3
@@ -11,11 +11,11 @@ spec:
     spec:
       hostNetwork: true
       nodeSelector:
-        kubernetes.io/hostname: hc-c-0057r
+        kubernetes.io/hostname: xip
       restartPolicy: Never
       containers:
-      - name: mqtt-broker-pull
-        image: eclipse-mosquitto:2.0.14
+      - name: sdv-runtime-pull
+        image: ghcr.io/eclipse-autowrx/sdv-runtime:dc1f218806aa00e1a99df23c7e2ed387b0c6da70
         imagePullPolicy: Always
         command: ["true"]
         # Add resource limits to prevent resource issues

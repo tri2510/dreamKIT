@@ -24,6 +24,16 @@ SERVICES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SERVICES_DIR/docker-compose.yml"
 ENV_FILE="$SERVICES_DIR/.env"
 
+# Determine Docker Compose command
+if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+    COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+else
+    echo "Error: Neither 'docker compose' nor 'docker-compose' is available" >&2
+    exit 1
+fi
+
 # Load environment variables
 load_environment() {
     export DK_USER="${DK_USER:-$(whoami)}"
@@ -94,7 +104,7 @@ status() {
 
     # Docker Compose status
     echo -e "${CYAN}${BOLD}Docker Compose Services:${NC}"
-    docker-compose --env-file "$ENV_FILE" ps
+    $COMPOSE_CMD --env-file "$ENV_FILE" ps
     echo
 
     # Detailed container information
@@ -191,10 +201,10 @@ restart() {
 
     if [[ -z "$service" ]]; then
         show_info "Restarting all dreamKIT services..."
-        docker-compose --env-file "$ENV_FILE" restart
+        $COMPOSE_CMD --env-file "$ENV_FILE" restart
     else
         show_info "Restarting service: $service"
-        docker-compose --env-file "$ENV_FILE" restart "$service"
+        $COMPOSE_CMD --env-file "$ENV_FILE" restart "$service"
     fi
 
     show_success "Services restarted successfully"
@@ -212,10 +222,10 @@ stop() {
 
     if [[ -z "$service" ]]; then
         show_info "Stopping all dreamKIT services..."
-        docker-compose --env-file "$ENV_FILE" down
+        $COMPOSE_CMD --env-file "$ENV_FILE" down
     else
         show_info "Stopping service: $service"
-        docker-compose --env-file "$ENV_FILE" stop "$service"
+        $COMPOSE_CMD --env-file "$ENV_FILE" stop "$service"
     fi
 
     show_success "Services stopped successfully"
@@ -233,10 +243,10 @@ start() {
 
     if [[ -z "$service" ]]; then
         show_info "Starting all dreamKIT services..."
-        docker-compose --env-file "$ENV_FILE" up -d
+        $COMPOSE_CMD --env-file "$ENV_FILE" up -d
     else
         show_info "Starting service: $service"
-        docker-compose --env-file "$ENV_FILE" up -d "$service"
+        $COMPOSE_CMD --env-file "$ENV_FILE" up -d "$service"
     fi
 
     show_success "Services started successfully"
@@ -256,14 +266,14 @@ update() {
 
     if [[ -z "$service" ]]; then
         show_info "Pulling latest images for all services..."
-        docker-compose --env-file "$ENV_FILE" pull
+        $COMPOSE_CMD --env-file "$ENV_FILE" pull
         show_info "Restarting services with new images..."
-        docker-compose --env-file "$ENV_FILE" up -d
+        $COMPOSE_CMD --env-file "$ENV_FILE" up -d
     else
         show_info "Pulling latest image for service: $service"
-        docker-compose --env-file "$ENV_FILE" pull "$service"
+        $COMPOSE_CMD --env-file "$ENV_FILE" pull "$service"
         show_info "Restarting service: $service"
-        docker-compose --env-file "$ENV_FILE" up -d "$service"
+        $COMPOSE_CMD --env-file "$ENV_FILE" up -d "$service"
     fi
 
     show_success "Services updated successfully"
@@ -282,7 +292,7 @@ clean() {
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         show_info "Removing all dreamKIT containers and volumes..."
         load_environment
-        docker-compose --env-file "$ENV_FILE" down -v --remove-orphans
+        $COMPOSE_CMD --env-file "$ENV_FILE" down -v --remove-orphans
         docker system prune -f
         show_success "Cleanup completed"
     else

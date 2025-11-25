@@ -14,7 +14,7 @@ spec:
         app: mqtt-broker
     spec:
       nodeSelector:
-        kubernetes.io/hostname: xip
+        kubernetes.io/hostname: hc-c-0057r
       hostNetwork: true
       restartPolicy: Always
 

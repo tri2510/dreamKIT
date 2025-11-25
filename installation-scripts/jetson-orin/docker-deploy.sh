@@ -31,7 +31,7 @@ load_environment() {
     export DK_USER="${DK_USER:-$(whoami)}"
     export RUNTIME_NAME="${RUNTIME_NAME:-dreamkit-runtime}"
     export ARCH="${ARCH:-$(uname -m)}"
-    export DOCKER_HUB_NAMESPACE="${DOCKER_HUB_NAMESPACE:-eclipseautowrx}"
+    export DOCKER_HUB_NAMESPACE="${DOCKER_HUB_NAMESPACE:-ghcr.io/eclipse-autowrx}"
     export DISPLAY="${DISPLAY:-:0}"
     export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
     export HOME_DIR="${HOME_DIR:-$HOME}"
@@ -79,9 +79,23 @@ check_docker() {
         return 1
     fi
 
-    if ! command -v docker-compose &> /dev/null; then
-        show_error "Docker Compose is not installed"
+    # Prefer modern docker compose plugin, fallback to docker-compose
+    if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+        COMPOSE_CMD="docker compose"
+        show_success "Using modern Docker Compose plugin"
+    elif command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+        show_warning "Using legacy docker-compose (consider upgrading to docker compose plugin)"
+    else
+        show_error "Docker Compose is not available"
         show_info "Install it with: sudo apt install docker-compose-plugin"
+        return 1
+    fi
+
+    # Test Docker Compose connectivity
+    if ! $COMPOSE_CMD --version &> /dev/null; then
+        show_error "Docker Compose is not working properly"
+        show_info "Try restarting Docker: sudo systemctl restart docker"
         return 1
     fi
 
@@ -142,7 +156,7 @@ deploy_core_services() {
     cd "$SERVICES_DIR"
 
     # Deploy without IVI and registry first
-    if docker-compose --env-file "$ENV_FILE" up -d mqtt-broker sdv-runtime dk-manager; then
+    if $COMPOSE_CMD --env-file "$ENV_FILE" up -d mqtt-broker sdv-runtime dk-manager; then
         show_success "Core services deployed successfully"
         return 0
     else
@@ -157,7 +171,7 @@ deploy_ivi_service() {
         show_info "Deploying IVI interface..."
 
         cd "$SERVICES_DIR"
-        if docker-compose --env-file "$ENV_FILE" --profile ivi up -d dk-ivi; then
+        if $COMPOSE_CMD --env-file "$ENV_FILE" --profile ivi up -d dk-ivi; then
             show_success "IVI interface deployed successfully"
             show_info "Access IVI interface at: http://localhost:8080"
             return 0
@@ -176,7 +190,7 @@ deploy_local_registry() {
     show_info "Deploying local Docker registry..."
 
     cd "$SERVICES_DIR"
-    if docker-compose --env-file "$ENV_FILE" --profile registry up -d local-registry; then
+    if $COMPOSE_CMD --env-file "$ENV_FILE" --profile registry up -d local-registry; then
         show_success "Local registry deployed successfully"
         show_info "Local registry available at: http://localhost:5000"
         return 0

@@ -71,7 +71,7 @@ spec:
     spec:
       serviceAccountName: dk-ivi-service-account
       nodeSelector:
-        kubernetes.io/hostname: xip
+        kubernetes.io/hostname: hc-c-0057r
       hostNetwork: true
       hostPID: true        # Required for nsenter to access host processes
       restartPolicy: Always

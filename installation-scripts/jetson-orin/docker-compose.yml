@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # MQTT Broker - Mosquitto
@@ -19,6 +18,12 @@ services:
       - ./mosquitto-logs:/mosquitto/log
     environment:
       - TZ=UTC
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "1883"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # SDV Runtime - Software Defined Vehicle Runtime
   sdv-runtime:
@@ -27,11 +32,11 @@ services:
     restart: unless-stopped
     hostname: sdv-runtime
     ports:
-      - "55555:55555"
+      - "55556:55555"
     networks:
       - dreamkit-network
     volumes:
-      - ${HOME}/.dk/sdv-runtime:/home/dev/ws/vss.json
+      - ${HOME}/.dk/sdv-runtime:/home/dev/ws
     environment:
       - USER=${DK_USER:-dreamkit}
       - RUNTIME_NAME=${RUNTIME_NAME:-dreamkit-runtime}
@@ -49,7 +54,7 @@ services:
 
   # DreamKit Manager - Core Management Service
   dk-manager:
-    image: ${DOCKER_HUB_NAMESPACE:-eclipseautowrx}/dk_manager:latest
+    image: ${DOCKER_HUB_NAMESPACE:-ghcr.io/eclipse-autowrx}/dk_manager:latest
     container_name: dreamkit-dk-manager
     restart: unless-stopped
     hostname: dk-manager
@@ -62,7 +67,7 @@ services:
       - /tmp:/tmp
     environment:
       - USER=${DK_USER:-dreamkit}
-      - DOCKER_HUB_NAMESPACE=${DOCKER_HUB_NAMESPACE:-eclipseautowrx}
+      - DOCKER_HUB_NAMESPACE=${DOCKER_HUB_NAMESPACE:-ghcr.io/eclipse-autowrx}
       - ARCH=${ARCH:-x86_64}
       - TZ=UTC
     depends_on:
@@ -71,7 +76,7 @@ services:
 
   # IVI Interface - In-Vehicle Infotainment (Conditional)
   dk-ivi:
-    image: ${DOCKER_HUB_NAMESPACE:-eclipseautowrx}/dk_ivi:latest
+    image: ${DOCKER_HUB_NAMESPACE:-ghcr.io/eclipse-autowrx}/dk_ivi:latest
     container_name: dreamkit-dk-ivi
     restart: unless-stopped
     hostname: dk-ivi
@@ -86,7 +91,7 @@ services:
       - ${XDG_RUNTIME_DIR:-/tmp}/pulse:/run/pulse
     environment:
       - USER=${DK_USER:-dreamkit}
-      - DOCKER_HUB_NAMESPACE=${DOCKER_HUB_NAMESPACE:-eclipseautowrx}
+      - DOCKER_HUB_NAMESPACE=${DOCKER_HUB_NAMESPACE:-ghcr.io/eclipse-autowrx}
       - ARCH=${ARCH:-x86_64}
       - DISPLAY=${DISPLAY:-:0}
       - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/tmp}
@@ -121,7 +126,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.25.0.0/16
 
 volumes:
   mosquitto-config:

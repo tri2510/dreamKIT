@@ -11,11 +11,11 @@ spec:
     spec:
       hostNetwork: true
       nodeSelector:
-        kubernetes.io/hostname: xip
+        kubernetes.io/hostname: hc-c-0057r
       restartPolicy: Never
       containers:
       - name: dk-manager-pull
-        image: ${DOCKER_HUB_NAMESPACE}/dk_manager:latest
+        image: ghcr.io/eclipse-autowrx/dk_manager:latest
         imagePullPolicy: Always
         command: ["true"]
         # Add resource limits to prevent resource issues

@@ -14,13 +14,13 @@ spec:
         app: sdv-runtime
     spec:
       nodeSelector:
-        kubernetes.io/hostname: xip
+        kubernetes.io/hostname: hc-c-0057r
       hostNetwork: true
       restartPolicy: Always
 
       containers:
       - name: sdv-runtime
-        image: ${DOCKER_HUB_NAMESPACE}/sdv-runtime:dc1f218806aa00e1a99df23c7e2ed387b0c6da70
+        image: ghcr.io/eclipse-autowrx/sdv-runtime:latest
         imagePullPolicy: IfNotPresent
 
         startupProbe:

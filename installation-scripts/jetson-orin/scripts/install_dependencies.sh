@@ -1031,22 +1031,8 @@ install_dependencies() {
 
 # Main execution
 main() {
-    # Ensure we're running as root for system-wide installations
-    if [ "$EUID" -ne 0 ]; then
-        echo -e "${RED}${BOLD}This script must be run as root (use sudo)${NC}"
-        echo -e "${YELLOW}Usage: sudo $0${NC}"
-        echo
-        echo -e "${DIM}Environment variables for version control:${NC}"
-        echo -e "${DIM}  NODE_VERSION=20           # Node.js major version${NC}"
-        echo -e "${DIM}  NODE_FULL_VERSION=20.1.0  # Node.js full version${NC}"
-        echo -e "${DIM}  K9S_VERSION=0.50.9        # k9s version${NC}"
-        echo -e "${DIM}  YQ_VERSION=4.35.2         # yq version${NC}"
-        echo -e "${DIM}  DOCKER_VERSION=24.0.0     # Docker version (optional)${NC}"
-        echo
-        echo -e "${DIM}Example:${NC}"
-        echo -e "${DIM}  sudo NODE_VERSION=18 K9S_VERSION=0.49.9 $0${NC}"
-        exit 1
-    fi
+    # Skip root check for non-sudo installation
+    echo -e "${BLUE}${BOLD}Running dependencies installation without sudo requirements${NC}"
     
     install_dependencies
     exit $?

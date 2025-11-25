@@ -11,11 +11,11 @@ spec:
     spec:
       hostNetwork: true
       nodeSelector:
-        kubernetes.io/hostname: xip
+        kubernetes.io/hostname: hc-c-0057r
       restartPolicy: Never
       containers:
       - name: sdv-runtime-pull
-        image: ${DOCKER_HUB_NAMESPACE}/sdv-runtime:dc1f218806aa00e1a99df23c7e2ed387b0c6da70
+        image: ghcr.io/eclipse-autowrx/sdv-runtime:latest
         imagePullPolicy: Always
         command: ["true"]
         # Add resource limits to prevent resource issues
